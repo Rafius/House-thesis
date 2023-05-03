@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Point
 import numpy as np
 import requests
-from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 from math import radians
 import math
@@ -29,19 +28,28 @@ def load_dataset(k, enable_prints=False):
 
         print(len(df.columns))
         print(df.columns)
+        print(df.isnull().sum())
+
+    # df = get_coordinates(df)
 
     df = df.dropna(subset=['latitude'])
+    df = df.dropna(subset=['price'])
 
     df = get_distance_to_center(df)
 
-    df = transform_dataset(df, enable_prints)
+    df = get_knn(df, k)
 
-    df = df.dropna(subset=['price'])
+    df = get_knn_mean_price(df)
+
+    # print(df)
+
+    df = transform_dataset(df, enable_prints)
+    print(df.isnull().sum())
 
     return df
 
 
-# Transforma las variables a numericas
+# Transforma las variables a numéricas
 def transform_dataset(df, print_plots):
     df['price'] = pd.to_numeric(df['price'], errors='coerce')
 
@@ -73,38 +81,48 @@ def transform_dataset(df, print_plots):
     return df
 
 
-# Obtiene los k vecinos y asigna la media de precio
+# Obtiene los k-vecinos
 def get_knn(df, k):
-    df['lat_rad'] = df['latitude'].apply(radians)
-    df['lon_rad'] = df['longitude'].apply(radians)
+    latitudes = df['latitude'].apply(radians)
+    longitudes = df['longitude'].apply(radians)
 
     nn = NearestNeighbors(n_neighbors=k, algorithm='ball_tree')
 
-    nn_df = df[['lat_rad', 'lon_rad']]
+    nn_df = pd.DataFrame({'lat': latitudes, 'lon': longitudes})
     nn.fit(nn_df)
     distances, indices = nn.kneighbors(nn_df)
 
+    neighbors_list = []
+
     for i in range(len(df)):
-        # print("Los vecinos más cercanos para el punto", i, "son:")
-        prices = []
-        for j in range(1, k):
-            #     # print(" - Punto", neighbor_idx, "a una distancia de", distances[i][j], "radianes", "latitud",
-            #     #       df.iloc[neighbor_idx].latitude,"longitud", df.iloc[neighbor_idx].longitude)
-            #     # print(df.iloc[neighbor_idx].price)
-            #
+        neighbors = []
+        for j in range(k):
             neighbor_idx = indices[i][j]
-            prices.append(df.iloc[neighbor_idx].price)
 
-        df.loc[i, 'neighbors_price_mean'] = np.mean(prices)
+            # Evitamos que se añada a si mismo como vecino
+            if neighbor_idx != i:
+                neighbors.append(neighbor_idx)
 
-    # Se crean valores nulos ?
-    df = df.dropna(subset=['neighbors_price_mean'])
-    df = df.drop("lat_rad", axis=1)
-    df = df.drop("lon_rad", axis=1)
+        neighbors_list.append(neighbors)
+
+    df["neighbors"] = neighbors_list
 
     return df
 
 
+# Crea una variable con la media de precio de los vecinos
+def get_knn_mean_price(df):
+    for i, row in df.iterrows():
+        prices = []
+        for neighbor in row.neighbors:
+            prices.append(df.iloc[neighbor].price)
+
+        df.loc[i, 'neighbors_price_mean'] = np.mean(prices)
+
+    return df
+
+
+# Obtiene la distancia de cada vivienda al centro de su ciudad
 def get_distance_to_center(df):
     cities = {
         'Barcelona': {'lat': 41.3851, 'lon': 2.1734},
@@ -116,9 +134,9 @@ def get_distance_to_center(df):
 
     for i, row in df.iterrows():
         lat, lon = row['latitude'], row['longitude']
-        for j, coords in enumerate(cities.values()):
+        for j, coordinates in enumerate(cities.values()):
             if row['city'] == j:
-                distance = haversine(lat, lon, coords['lat'], coords['lon'])
+                distance = haversine(lat, lon, coordinates['lat'], coordinates['lon'])
                 df.at[i, 'distanceToCenter'] = distance
 
     return df
@@ -143,20 +161,7 @@ def haversine(lat1, lon1, lat2, lon2):
     return distance
 
 
-# Estandariza el dataset
-def normalize_data(X_train, X_test=None):
-    scaler = StandardScaler().fit(X_train)
-
-    X_train_normalize = scaler.transform(X_train)
-    X_test_normalize = None
-
-    if X_test is not None:
-        X_test_normalize = scaler.transform(X_test)
-
-    return X_train_normalize, X_test_normalize
-
-
-# Limpia la direccion para quedarnos con los necesario
+# Limpia la dirección
 def clean_address(address):
     to_remove = ["Piso en alquiler en", "Apartamento en alquiler en", "Ático en alquiler en",
                  "Dúplex en alquiler en", "Casa adosada en alquiler en", "Chalet en alquiler en",
@@ -202,3 +207,5 @@ def get_coordinates(df):
             print(f"Could not find location for address: {index}{address} {region}")
 
     df.to_csv('houses_to_buy_v2.csv', index=False)
+
+    return df
