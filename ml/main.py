@@ -29,7 +29,7 @@ print("end")
 #
 # hacer normalizacion con train
 #
-# para comprar normalizar todo como si fuera train y hace un fit del modelo
+# para comparar normalizar todo como si fuera train y hace un fit del modelo
 #
 # carga de datos
 #
