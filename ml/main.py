@@ -7,21 +7,18 @@ from sklearn.linear_model import LinearRegression
 k = 4
 enable_prints = False
 
-# Obtenemos el dataset con las variables que vamos a usar, ya transformadas
+print("Obtenemos el dataset con las variables que vamos a usar, ya transformadas")
 df = load_dataset(k, enable_prints)
 
-# Dividimos el dataset en conjuntos de prueba
+print("Dividimos el dataset en conjuntos de prueba")
 
 
-# Normalizamos los datos
+print("Normalizamos los datos")
 
-# df = normalize_data()
 
-# Experimentos para performance
+print("Experimentos para performance")
 # test1(df)
 
-
-print(df)
 
 print("end")
 

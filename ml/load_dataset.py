@@ -41,10 +41,8 @@ def load_dataset(k, enable_prints=False):
 
     df = get_knn_mean_price(df)
 
-    # print(df)
 
     df = transform_dataset(df, enable_prints)
-    print(df.isnull().sum())
 
     return df
 
