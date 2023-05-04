@@ -7,10 +7,13 @@ import requests
 from sklearn.neighbors import NearestNeighbors
 from math import radians
 import math
+from sklearn.preprocessing import StandardScaler
 
 
-# Carga el dataset y elige las columnas
-def load_dataset(k, enable_prints=False):
+def load_dataset(enable_prints=False):
+    """
+    Carga el dataset y elige las columnas
+    """
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
 
     features = ['price', 'city', 'builtArea', 'usableArea', 'bedrooms', 'bathrooms', 'floor', 'elevator',
@@ -35,20 +38,15 @@ def load_dataset(k, enable_prints=False):
     df = df.dropna(subset=['latitude'])
     df = df.dropna(subset=['price'])
 
-    df = get_distance_to_center(df)
-
-    df = get_knn(df, k)
-
-    df = get_knn_mean_price(df)
-
-
     df = transform_dataset(df, enable_prints)
 
     return df
 
 
-# Transforma las variables a numéricas
 def transform_dataset(df, print_plots):
+    """
+    Transforma las variables a numéricas
+    """
     df['price'] = pd.to_numeric(df['price'], errors='coerce')
 
     df['builtArea'] = pd.to_numeric(df['builtArea'], errors='coerce')
@@ -71,7 +69,6 @@ def transform_dataset(df, print_plots):
         loc_geom = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
         df = gpd.GeoDataFrame(df, geometry=loc_geom)
 
-        # Plot the GeoDataFrame
         df.plot()
         df.hist(bins=50, figsize=(15, 15))
         plt.show()
@@ -79,10 +76,25 @@ def transform_dataset(df, print_plots):
     return df
 
 
-# Obtiene los k-vecinos
-def get_knn(df, k):
-    latitudes = df['latitude'].apply(radians)
-    longitudes = df['longitude'].apply(radians)
+def replace_null_with_median(X_train, X_test):
+    """
+    Reemplaza los valores nulos con la mediana de la columna de X_train
+    """
+
+    median = X_train.median()
+
+    X_train = X_train.fillna(median)
+    X_test = X_test.fillna(median)
+
+    return X_train, X_test
+
+
+def get_knn(X_train_fold, X_test, k):
+    """
+    Obtiene los k-vecinos
+    """
+    latitudes = X_train_fold['latitude'].apply(radians)
+    longitudes = X_train_fold['longitude'].apply(radians)
 
     nn = NearestNeighbors(n_neighbors=k, algorithm='ball_tree')
 
@@ -92,7 +104,7 @@ def get_knn(df, k):
 
     neighbors_list = []
 
-    for i in range(len(df)):
+    for i in range(len(X_test)):
         neighbors = []
         for j in range(k):
             neighbor_idx = indices[i][j]
@@ -103,25 +115,29 @@ def get_knn(df, k):
 
         neighbors_list.append(neighbors)
 
-    df["neighbors"] = neighbors_list
+    X_test["neighbors"] = neighbors_list
 
-    return df
+    return X_test
 
 
-# Crea una variable con la media de precio de los vecinos
-def get_knn_mean_price(df):
-    for i, row in df.iterrows():
+def get_knn_mean_price(df, X_test):
+    """
+    Crea una variable con la media de precio de los vecinos
+    """
+    for i, row in X_test.iterrows():
         prices = []
         for neighbor in row.neighbors:
             prices.append(df.iloc[neighbor].price)
 
-        df.loc[i, 'neighbors_price_mean'] = np.mean(prices)
+        X_test.loc[i, 'neighbors_price_mean'] = np.mean(prices)
 
-    return df
+    return X_test
 
 
-# Obtiene la distancia de cada vivienda al centro de su ciudad
 def get_distance_to_center(df):
+    """
+    Obtiene la distancia de cada vivienda al centro de su ciudad
+    """
     cities = {
         'Barcelona': {'lat': 41.3851, 'lon': 2.1734},
         'Madrid': {'lat': 40.4168, 'lon': -3.7038},
@@ -140,8 +156,10 @@ def get_distance_to_center(df):
     return df
 
 
-# Función de la fórmula de Haversine
 def haversine(lat1, lon1, lat2, lon2):
+    """
+    Función de la fórmula de Haversine
+    """
     R = 6371  # Radio de la Tierra en kilómetros
 
     # Conversión de grados a radianes
@@ -159,8 +177,10 @@ def haversine(lat1, lon1, lat2, lon2):
     return distance
 
 
-# Limpia la dirección
 def clean_address(address):
+    """
+    Limpia la dirección
+    """
     to_remove = ["Piso en alquiler en", "Apartamento en alquiler en", "Ático en alquiler en",
                  "Dúplex en alquiler en", "Casa adosada en alquiler en", "Chalet en alquiler en",
                  "Casa unifamiliar en alquiler", "Estudio en alquiler en", "Loft en alquiler en",
@@ -176,8 +196,10 @@ def clean_address(address):
     return address
 
 
-# Obtiene las coordenadas de una calle
 def get_coordinates(df):
+    """
+    Obtiene las coordenadas de una calle
+    """
     url = 'http://api.positionstack.com/v1/forward'
 
     for index, row in df.iterrows():
@@ -207,3 +229,19 @@ def get_coordinates(df):
     df.to_csv('houses_to_buy_v2.csv', index=False)
 
     return df
+
+
+def normalize_data(X_train, X_test=None):
+    """
+    Normaliza los datos de entrada
+    """
+
+    scaler = StandardScaler().fit(X_train)
+
+    X_train_normalize = scaler.transform(X_train)
+    X_test_normalize = None
+
+    if X_test is not None:
+        X_test_normalize = scaler.transform(X_test)
+
+    return X_train_normalize, X_test_normalize
