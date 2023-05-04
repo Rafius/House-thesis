@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -144,14 +146,14 @@ def get_distance_to_center(df):
         'Málaga': {'lat': 36.7213, 'lon': -4.4213},
     }
 
-    df['distanceToCenter'] = None
+    df['distance_to_center'] = None
 
     for i, row in df.iterrows():
         lat, lon = row['latitude'], row['longitude']
         for j, coordinates in enumerate(cities.values()):
             if row['city'] == j:
                 distance = haversine(lat, lon, coordinates['lat'], coordinates['lon'])
-                df.at[i, 'distanceToCenter'] = distance
+                df.at[i, 'distance_to_center'] = distance
 
     return df
 
@@ -245,3 +247,22 @@ def normalize_data(X_train, X_test=None):
         X_test_normalize = scaler.transform(X_test)
 
     return X_train_normalize, X_test_normalize
+
+
+def add_columns(columns_to_add,df, X_train_fold, X_test_fold, k):
+    for column in columns_to_add:
+        if column == "distance_to_center":
+            X_train_fold = get_distance_to_center(X_train_fold)
+            X_test_fold = get_distance_to_center(X_test_fold)
+
+        if column == "neighbors":
+            X_train_fold = get_knn(X_train_fold, X_train_fold, k)
+            X_test_fold = get_knn(X_train_fold, X_test_fold, k)
+
+        if column == "neighbors_price_mean":
+            X_train_fold = get_knn_mean_price(df, X_train_fold)
+            X_test_fold = get_knn_mean_price(df, X_test_fold)
+            X_train_fold = X_train_fold.drop("neighbors", axis=1)
+            X_test_fold = X_test_fold.drop("neighbors", axis=1)
+
+    return X_train_fold, X_test_fold
