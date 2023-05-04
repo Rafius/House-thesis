@@ -1,0 +1,27 @@
+.HouseCard {
+  padding: 0 8px;
+
+  &__image {
+    height: 180px;
+    border-radius: 16px;
+  }
+
+  &__title{
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    display: -webkit-box;
+    font-weight: 400;
+    overflow: hidden;
+    text-decoration: none;
+  }
+
+  &__features {
+    display: flex;
+    list-style: none;
+
+    li:not(:last-child):after  {
+      content: " · ";
+      margin: 0 4px;
+    }
+  }
+}

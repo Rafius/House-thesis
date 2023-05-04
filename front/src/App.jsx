@@ -1,7 +1,7 @@
-import "./App.css";
 import HouseCard from "./components/HouseCard";
 import housesJson from "./houses_to_buy.json";
 import { shouldBuyThisHouse } from "./utils";
+import styles from "./App.module.scss";
 
 const App = () => {
   const houses = housesJson
@@ -13,12 +13,10 @@ const App = () => {
     .sort((b, a) => a.cashOnCashReturn - b.cashOnCashReturn);
 
   return (
-    <div>
-      <div className="houses-container">
-        {houses.map((house, index) => (
-          <HouseCard {...house} key={index} {...shouldBuyThisHouse(house)} />
-        ))}
-      </div>
+    <div className={styles.HousesContainer}>
+      {houses.slice(0, 10).map((house) => (
+        <HouseCard {...house} key={house.link} {...shouldBuyThisHouse(house)} />
+      ))}
     </div>
   );
 };

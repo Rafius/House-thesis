@@ -1,8 +1,7 @@
-import sys
-
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from numpy import mean
 from shapely.geometry import Point
 import numpy as np
 import requests
@@ -10,7 +9,11 @@ from sklearn.neighbors import NearestNeighbors
 from math import radians
 import math
 from sklearn.preprocessing import StandardScaler
-
+from statistics import mean, stdev
+from tabulate import tabulate
+from numpy import std, sqrt
+import os.path
+from openpyxl import Workbook, load_workbook
 
 def load_dataset(enable_prints=False):
     """
@@ -249,7 +252,7 @@ def normalize_data(X_train, X_test=None):
     return X_train_normalize, X_test_normalize
 
 
-def add_columns(columns_to_add,df, X_train_fold, X_test_fold, k):
+def add_columns(columns_to_add, df, X_train_fold, X_test_fold, k):
     for column in columns_to_add:
         if column == "distance_to_center":
             X_train_fold = get_distance_to_center(X_train_fold)
@@ -266,3 +269,48 @@ def add_columns(columns_to_add,df, X_train_fold, X_test_fold, k):
             X_test_fold = X_test_fold.drop("neighbors", axis=1)
 
     return X_train_fold, X_test_fold
+
+
+def print_results(all_results, model_names, experiment):
+    for results in all_results:
+        sorted_results = sorted(results, key=lambda x: x['MAE'])
+        table = []
+        for result in sorted_results:
+            table.append([result['model'], result['MAE'], result['fold']])
+        # print("\n", tabulate(table, headers=['Model', 'MAE', 'Fold'], floatfmt='.2f',
+        #                      tablefmt='orgtbl'))
+
+    table = []
+    for i, model_name in enumerate(model_names):
+        maes = [result[i]['MAE'] for result in all_results]
+        mean_mae = mean(maes)
+        std_mae = stdev(maes)
+        std_mean_mae = std(maes) / sqrt(len(maes))
+
+        table.append([model_name, mean_mae, std_mae, mean_mae + std_mean_mae, mean_mae - std_mean_mae])
+
+    table_sorted = sorted(table, key=lambda x: x[1])
+    # print("\n", tabulate(table_sorted, headers=['Model', 'MAE (Mean)', 'MAE (Std)', 'MAE+StdMean', 'MAE-StdMean'],
+    #                      floatfmt='.2f', tablefmt='orgtbl'))
+
+    # Convertir la tabla de resultados en un DataFrame
+    df_results = pd.DataFrame(table_sorted, columns=['Model', 'MAE (Mean)', 'MAE (Std)', 'MAE+StdMean', 'MAE-StdMean'])
+
+    # Comprobar si el archivo de Excel existe
+    if os.path.isfile('resultados.xlsx'):
+        # Cargar el libro de trabajo existente
+        book = load_workbook('resultados.xlsx')
+        writer = pd.ExcelWriter('resultados.xlsx', engine='openpyxl')
+        writer.book = book
+    else:
+        # Crear un nuevo libro de trabajo
+        writer = pd.ExcelWriter('resultados.xlsx', engine='openpyxl')
+
+    # Guardar el DataFrame en una nueva hoja
+
+    print(df_results)
+    df_results.to_excel(writer, sheet_name=experiment, index=False)
+
+    # Cerrar el objeto writer
+    writer.close()
+
