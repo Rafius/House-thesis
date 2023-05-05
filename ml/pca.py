@@ -15,7 +15,7 @@ def pca_city(df):
     plt.show()
     data = np.array(x_pca)
 
-    fig = plt.figure()
+    plt.figure()
 
     fig, axs = plt.subplots(2, 2)
     axs[0, 0].scatter(data[:, 0], data[:, 1], data[:, 2], c=df["city"])

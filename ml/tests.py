@@ -1,5 +1,3 @@
-import sys
-
 from sklearn import svm
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.linear_model import LinearRegression
@@ -10,19 +8,17 @@ from sklearn.neural_network import MLPRegressor, MLPClassifier
 from xgboost import XGBRegressor
 from utils import *
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from utils import get_distance_to_center, get_knn, get_knn_mean_price
-from sklearn.preprocessing import StandardScaler
 
 # Numero de vecinos
 k = 4
 
-# Numero de divisiones
+# Número de divisiones
 k_fold_splits = 5
 
 
 def base_test(df, columns_to_add, experiment):
     """
-    Funcion para usar como base del experimento
+    Función para usar como base del experimento
     """
     # print("Dividimos el dataset en conjuntos de prueba")
 
@@ -32,7 +28,7 @@ def base_test(df, columns_to_add, experiment):
     # print("Dividimos el dataset en train y test")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # print("Aplico kfold")
+    # print("Aplico k-fold")
     kf = KFold(n_splits=k_fold_splits, shuffle=True, random_state=42)
 
     all_results = []
@@ -77,8 +73,6 @@ def base_test(df, columns_to_add, experiment):
     # Crear tabla final
 
     print_results(all_results, model_names, experiment)
-
-
 
 
 def test1(df):
@@ -126,7 +120,7 @@ def test5(df):
     """
     Este experimento se realizará con todas las filas que tengan todos los valores
     """
-    print("Experimiento 5")
+    print("Experiment 5")
 
     df = df.dropna()
     base_test(df, [], "experiment5")
