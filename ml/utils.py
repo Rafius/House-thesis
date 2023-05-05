@@ -10,10 +10,13 @@ from math import radians
 import math
 from sklearn.preprocessing import StandardScaler
 from statistics import mean, stdev
-from tabulate import tabulate
 from numpy import std, sqrt
 import os.path
-from openpyxl import Workbook, load_workbook
+from openpyxl import load_workbook
+
+# Numero de vecinos
+k = 4
+
 
 def load_dataset(enable_prints=False):
     """
@@ -48,10 +51,11 @@ def load_dataset(enable_prints=False):
     return df
 
 
-def transform_dataset(df, print_plots):
+def transform_dataset(df, print_plots=False):
     """
     Transforma las variables a numéricas
     """
+
     df['price'] = pd.to_numeric(df['price'], errors='coerce')
 
     df['builtArea'] = pd.to_numeric(df['builtArea'], errors='coerce')
@@ -60,9 +64,19 @@ def transform_dataset(df, print_plots):
 
     df['bedrooms'] = pd.to_numeric(df['bedrooms'], errors='coerce')
     df['bedrooms'] = df['bedrooms'].replace('', 1)
+    df['bedrooms'].fillna(1, inplace=True)
 
     df['bathrooms'] = pd.to_numeric(df['bathrooms'], errors='coerce')
     df['bathrooms'] = df['bathrooms'].replace('', 1)
+    df['bathrooms'].fillna(1, inplace=True)
+
+    #
+    # boolean_dict = {True: 1, False: 0}
+    #
+    # df["elevator"] = df['elevator'].map(boolean_dict)
+    # df["houseHeating"] = df['houseHeating'].map(boolean_dict)
+    # df["terrace"] = df['terrace'].map(boolean_dict)
+    # df["swimmingPool"] = df['swimmingPool'].map(boolean_dict)
 
     floor_dict = {'Principal': 1, 'Entresuelo': 0.5, 'Bajo': 0, 'Sótano': -1, 'Subsótano': -0.5, 'Más de 20': 21}
 
@@ -81,7 +95,7 @@ def transform_dataset(df, print_plots):
     return df
 
 
-def replace_null_with_median(X_train, X_test):
+def replace_null_with_median(X_train, X_test=None):
     """
     Reemplaza los valores nulos con la mediana de la columna de X_train
     """
@@ -89,7 +103,9 @@ def replace_null_with_median(X_train, X_test):
     median = X_train.median()
 
     X_train = X_train.fillna(median)
-    X_test = X_test.fillna(median)
+
+    if X_test is not None:
+        X_test = X_test.fillna(median)
 
     return X_train, X_test
 
@@ -231,8 +247,6 @@ def get_coordinates(df):
         else:
             print(f"Could not find location for address: {index}{address} {region}")
 
-    df.to_csv('houses_to_buy_v2.csv', index=False)
-
     return df
 
 
@@ -253,6 +267,9 @@ def normalize_data(X_train, X_test=None):
 
 
 def add_columns(columns_to_add, df, X_train_fold, X_test_fold, k):
+    """
+    Añade columnas al dataset
+    """
     for column in columns_to_add:
         if column == "distance_to_center":
             X_train_fold = get_distance_to_center(X_train_fold)
@@ -272,6 +289,9 @@ def add_columns(columns_to_add, df, X_train_fold, X_test_fold, k):
 
 
 def print_results(all_results, model_names, experiment):
+    """
+    Pinta los resultados de los experimentos
+    """
     for results in all_results:
         sorted_results = sorted(results, key=lambda x: x['MAE'])
         table = []
@@ -307,10 +327,43 @@ def print_results(all_results, model_names, experiment):
         writer = pd.ExcelWriter('resultados.xlsx', engine='openpyxl')
 
     # Guardar el DataFrame en una nueva hoja
-
     print(df_results)
     df_results.to_excel(writer, sheet_name=experiment, index=False)
 
     # Cerrar el objeto writer
     writer.close()
 
+
+def estimate_houses_to_buy_rent_prices():
+    """
+    Estima los precios de alquiler de los pisos en venta
+    """
+
+    df_buy = pd.read_csv('houses_to_buy_v2.csv')
+
+    df_buy = df_buy.dropna(subset=['price'])
+
+    df_buy = df_buy.dropna(subset=['latitude'])
+
+    features = ["price", 'city', 'builtArea', "usableArea", "floor", 'bedrooms', 'bathrooms', 'elevator',
+                'houseHeating', 'terrace', 'swimmingPool', "latitude", "longitude"]
+
+    df_buy_final = df_buy.loc[:, features]
+
+    df_buy_final = transform_dataset(df_buy_final)
+
+    df_buy_final = get_distance_to_center(df_buy_final)
+
+    df_buy_final, _ = replace_null_with_median(df_buy_final)
+
+    df_buy_final, _ = normalize_data(df_buy_final)
+
+    # Usar el mejor modelo para predecir
+
+    # predictions = dt.predict(df_buy_final)
+    #
+    # nuevos_datos_con_predicciones = np.concatenate((df_buy, predictions.reshape(-1, 1)), axis=1)
+    # columnas = list(df_buy.columns) + ["rentPrice"]
+    # df_buy = pd.DataFrame(nuevos_datos_con_predicciones, columns=columnas)
+    #
+    # df_buy.to_json('houses_to_buy.json', orient='records')

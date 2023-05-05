@@ -60,11 +60,7 @@ def base_test(df, columns_to_add, experiment):
 
         # print("Normalizamos los datos")
 
-        scaler = StandardScaler()
-        scaler.fit(X_train_fold)
-
-        X_train_fold = scaler.transform(X_train_fold)
-        X_test_fold = scaler.transform(X_test_fold)
+        X_train_fold, X_test_fold = normalize_data(X_train_fold, X_test_fold)
 
         results = []
 
@@ -81,6 +77,8 @@ def base_test(df, columns_to_add, experiment):
     # Crear tabla final
 
     print_results(all_results, model_names, experiment)
+
+
 
 
 def test1(df):

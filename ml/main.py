@@ -1,4 +1,4 @@
-from utils import load_dataset
+from utils import *
 from tests import *
 import time
 
@@ -20,6 +20,8 @@ test7(df)
 test8(df)
 test9(df)
 test10(df)
+
+estimate_houses_to_buy_rent_prices()
 
 end_time = time.time()
 elapsed_time = end_time - start_time
