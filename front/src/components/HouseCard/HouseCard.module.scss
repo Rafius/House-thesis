@@ -1,27 +1,70 @@
 .HouseCard {
-  padding: 0 8px;
+  border: 2px solid white;
+  border-radius: 16px;
+  width: 300px;
+  cursor: pointer;
+
+  &:hover {
+    transform: scale(1.2);
+  }
 
   &__image {
-    height: 180px;
-    border-radius: 16px;
+    width: 300px;
+    border-radius: 13px 13px 0 0;
+    object-fit: contain;
   }
 
-  &__title{
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-    display: -webkit-box;
-    font-weight: 400;
-    overflow: hidden;
-    text-decoration: none;
+  p,
+  h3 {
+    margin: 10px 0;
   }
 
-  &__features {
+  &__body {
+    padding: 0 8px;
     display: flex;
-    list-style: none;
+    flex-direction: column;
 
-    li:not(:last-child):after  {
-      content: " · ";
-      margin: 0 4px;
+    &__price {
+      margin-bottom: 8px;
+    }
+
+    &__title {
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+      display: -webkit-box;
+      font-weight: 400;
+      overflow: hidden;
+      text-decoration: none;
+    }
+
+    &__features {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 10px 0;
+
+      &__item {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        gap: 4px;
+      }
+
+      li:not(:last-child):after {
+        content: " · ";
+        margin: 0 4px;
+      }
+    }
+
+    &__rentPrice {
+      font-weight: 600;
+      &__green {
+        color: #98fb98;
+      }
+
+      &__orange {
+        color: orange;
+      }
     }
   }
 }

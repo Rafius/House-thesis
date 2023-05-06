@@ -1,22 +1,29 @@
-import HouseCard from "./components/HouseCard";
-import housesJson from "./houses_to_buy.json";
+import { HouseCard, Pagination } from "./components";
 import { shouldBuyThisHouse } from "./utils";
+import useHouses from "./useHouses";
+
 import styles from "./App.module.scss";
 
 const App = () => {
-  const houses = housesJson
-    .map((house) => ({
-      ...house,
-      ...shouldBuyThisHouse(house)
-    }))
-    .filter((house) => house.isHouseInteresting)
-    .sort((b, a) => a.cashOnCashReturn - b.cashOnCashReturn);
+  const { houses, currentPage, paginationButtons, handlePaginationClick } =
+    useHouses();
 
   return (
-    <div className={styles.HousesContainer}>
-      {houses.slice(0, 10).map((house) => (
-        <HouseCard {...house} key={house.link} {...shouldBuyThisHouse(house)} />
-      ))}
+    <div>
+      <Pagination
+        paginationButtons={paginationButtons}
+        handlePaginationClick={handlePaginationClick}
+        currentPage={currentPage}
+      />
+      <div className={styles.HousesContainer}>
+        {houses.map((house) => (
+          <HouseCard
+            {...house}
+            key={house.link}
+            {...shouldBuyThisHouse(house)}
+          />
+        ))}
+      </div>
     </div>
   );
 };
