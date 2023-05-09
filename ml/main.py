@@ -10,16 +10,18 @@ enable_prints = False
 df = load_dataset(enable_prints)
 
 # print("Experimentos")
-test1(df)
-test2(df)
-test3(df)
-test4(df)
-test5(df)
-test6(df)
-test7(df)
-test8(df)
-test9(df)
-test10(df)
+# test1(df)
+# test2(df)
+# test3(df)
+# test4(df)
+# test5(df)
+# test6(df)
+# test7(df)
+# test8(df)
+# test9(df)
+# test10(df)
+
+base_test(df)
 
 estimate_houses_to_buy_rent_prices()
 

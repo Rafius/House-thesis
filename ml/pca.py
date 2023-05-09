@@ -2,7 +2,6 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 def pca_city(df):
     x_pca = pca(df)
     data = np.array(x_pca)

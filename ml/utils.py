@@ -95,7 +95,7 @@ def transform_dataset(df, print_plots=False):
     return df
 
 
-def replace_null_with_median(X_train, X_test=None):
+def replace_null_with_median(X_train, X_test=None, options=None):
     """
     Reemplaza los valores nulos con la mediana de la columna de X_train
     """

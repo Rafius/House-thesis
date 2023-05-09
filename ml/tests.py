@@ -1,8 +1,11 @@
+import os
+import pickle
+from datetime import datetime
 from sklearn import svm
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import train_test_split, KFold
+from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPRegressor, MLPClassifier
 from xgboost import XGBRegressor
@@ -16,7 +19,37 @@ k = 4
 k_fold_splits = 5
 
 
-def base_test(df, columns_to_add, experiment):
+def clean_missing_values(X_train, X_test, options):
+    if options["type"] == "median":
+        return replace_null_with_median(X_train, X_test)
+
+    elif options["type"] == "mean":
+        return None, None
+        # X_train, X_test = replace_null_with_mean(X_train, X_test)
+
+
+def run_experiment(experiment, X_train, y_train, X_test, model_instance):
+    mv_options = {"type": "median", "options": {}}
+
+    if "missing_values" in experiment:
+        mv_options.update(experiment["missing_values"])
+
+    X_train, X_test = clean_missing_values(X_train, X_test, options=mv_options)
+
+    # print("Añadimos variables nuevas")
+
+    # if len(columns_to_add) != 0:
+    #     X_train, X_test = add_columns(columns_to_add, df, X_train, X_test, k)
+
+    # print("Normalizamos los datos")
+
+    X_train, X_test = normalize_data(X_train, X_test)
+
+    model_instance.fit(X_train, y_train)
+    return model_instance.predict(X_test)
+
+
+def base_test(df):
     """
     Función para usar como base del experimento
     """
@@ -26,55 +59,143 @@ def base_test(df, columns_to_add, experiment):
     y = df["price"]
 
     # print("Dividimos el dataset en train y test")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    models = [
+        {
+            "model": LinearRegression,
+            "model_args": {},
+            "model_name": 'LinearRegression'
+        },
+        {
+            "model": DecisionTreeRegressor,
+            "model_args": {},
+            "model_name": 'DecisionTreeRegressor'
+        },
+        {
+            "model": RandomForestRegressor,
+            "model_args": {},
+            "model_name": 'RandomForestRegressor'
+        },
+        {
+            "model": MLPRegressor,
+            "model_args": {},
+            "model_name": 'MLPRegressor'
+        },
+        {
+            "model": GradientBoostingRegressor,
+            "model_args": {},
+            "model_name": 'GradientBoostingRegressor'
+        },
+        {
+            "model": XGBRegressor,
+            "model_args": {},
+            "model_name": 'XGBRegressor'
+        },
+        {
+            "model": DecisionTreeClassifier,
+            "model_args": {},
+            "model_name": 'DecisionTreeClassifier'
+        },
+        {
+            "model": RandomForestClassifier,
+            "model_args": {},
+            "model_name": 'RandomForestClassifier'
+        },
+        {
+            "model": MLPClassifier,
+            "model_args": {},
+            "model_name": 'MLPClassifier'
+        },
+        {
+            "model": svm.SVC,
+            "model_args": {},
+            "model_name": 'SVM'
+        },
+        {
+            "model": KNeighborsClassifier,
+            "model_args": {},
+            "model_name": 'KNN'
+        }
+    ]
+
+    experiments = [
+        {
+            "force": True,
+            "id": "Test1",
+            "name": "Knn with all models",
+            "models": models,
+            "options": {},
+            "missing_values": {
+                "type": "median",
+                "options": {}
+            },
+        },
+        # {
+        #     "force": False,
+        #     "id": "MLPC1",
+        #     "name": "MLPClassifier",
+        #     "options": {
+        #         "model": MLPClassifier,
+        #         "model_args": {
+        #         }
+        #     },
+        # }
+    ]
+
+    exp_results = {}
+    if os.path.exists("results.pkl"):
+        with open("results.pkl", "rb") as infile:
+            exp_results = pickle.load(infile)
+
+    print(exp_results)
 
     # print("Aplico k-fold")
     kf = KFold(n_splits=k_fold_splits, shuffle=True, random_state=42)
 
-    all_results = []
-
-    models = [LinearRegression(), DecisionTreeRegressor(), RandomForestRegressor(), MLPRegressor(),
-              GradientBoostingRegressor(), XGBRegressor(), DecisionTreeClassifier(), RandomForestClassifier(),
-              MLPClassifier(), svm.SVC(), KNeighborsClassifier(n_neighbors=5)]
-
-    model_names = ['Linear Regression', 'Decision Tree Regressor', 'RandomForestRegressor', 'MLPRegressor',
-                   'GradientBoostingRegressor', 'XGBRegressor', " DecisionTreeClassifier", "RandomForestClassifier",
-                   "MLPClassifier", "SVM", "KNN"]
-
-    for i, (train_index, _) in enumerate(kf.split(X_train)):
+    for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("KFold", i)
-        X_train_fold = X.iloc[train_index]
-        X_test_fold = X_test
+        if f"k_{i}" not in exp_results:
+            exp_results[f"k_{i}"] = {"train_index": train_index, "test_index": test_index, "results": {}}
 
-        # print("Transformamos los valores nulos a la mediana de la columna de X_train")
+        X_train = X.iloc[train_index]
+        X_test = X.iloc[test_index]
+        y_train = y.iloc[train_index]
+        y_test = y.iloc[test_index]
 
-        if df.isnull().values.any():
-            X_train_fold, X_test_fold = replace_null_with_median(X_train_fold, X_test_fold)
+        for experiment in experiments:
 
-        # print("Añadimos variables nuevas")
+            if not experiment["force"] and experiment["id"] in exp_results[f"k_{i}"]["results"]:
+                print("Skipped experiment", experiment)
+                continue
 
-        if len(columns_to_add) != 0:
-            X_train_fold, X_test_fold = add_columns(columns_to_add, df, X_train_fold, X_test_fold, k)
+            for model in experiment["models"]:
+                model_class = model['model']
+                model_args = model['model_args']
+                model_name = model['model_name']
+                model_instance = model_class(**model_args)
 
-        # print("Normalizamos los datos")
+                tic = datetime.now()
+                y_pred = run_experiment(experiment, X_train, y_train, X_test, model_instance)
+                toc = datetime.now()
 
-        X_train_fold, X_test_fold = normalize_data(X_train_fold, X_test_fold)
+                experiment_time_ms = (toc - tic).total_seconds() * 1000
 
-        results = []
+                mae = mean_absolute_error(y_test, y_pred)
 
-        for j, model in enumerate(models):
-            model.fit(X_train_fold, y_train.iloc[train_index])
-            y_pred = model.predict(X_test_fold)
+                if experiment["id"] not in exp_results[f"k_{i}"]["results"]:
+                    exp_results[f"k_{i}"]["results"][experiment["id"]] = {}
 
-            mae = mean_absolute_error(y_test, y_pred)
+                exp_results[f"k_{i}"]["results"][experiment["id"]][model_name] = {'model': experiment, 'MAE': mae,
+                                                                                  "fold": i,
+                                                                                  "predictions": y_pred,
+                                                                                  "experiment_time_ms": experiment_time_ms}
 
-            results.append({'model': model_names[j], 'MAE': mae, "fold": i})
+                # Guardar resultados
+                with open("results.pkl", "wb") as outfile:
+                    pickle.dump(exp_results, outfile)
 
-        all_results.append(results)
-
-    # Crear tabla final
-
-    print_results(all_results, model_names, experiment)
+    # print_results(all_results, model_names, experiment)
 
 
 def test1(df):
