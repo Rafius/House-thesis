@@ -45,7 +45,8 @@ export const shouldBuyThisHouse = (house) => {
   const cashFlow = yearEarnings - (housePrice - deposit) / 30;
   const cashOnCashReturn = (cashFlow / (deposit + notary + vat)) * 100;
 
-  const isHouseInteresting = cashOnCashReturn > 5;
+  const grossReturn = (yearlyRentPrice / (housePrice + notary + vat)) * 100;
+  const isHouseInteresting = cashOnCashReturn > 8;
 
-  return { cashOnCashReturn, isHouseInteresting };
+  return { cashOnCashReturn, isHouseInteresting, grossReturn };
 };

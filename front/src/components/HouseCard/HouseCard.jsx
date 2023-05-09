@@ -8,18 +8,20 @@ const HouseCard = ({
   price,
   rentPrice,
   cashOnCashReturn,
+  grossReturn,
   bedrooms = "1",
-  bathrooms = "1"
+  bathrooms = "1",
+  link
 }) => {
   const [titleFirstWord, ...restTitle] = title.split(" ");
 
   const priceColor =
-    cashOnCashReturn > 5
+    grossReturn > 8
       ? styles.HouseCard__body__rentPrice__green
       : styles.HouseCard__body__rentPrice__orange;
 
   return (
-    <div className={styles.HouseCard}>
+    <a className={styles.HouseCard} target="_blank" href={link}>
       <img
         className={styles.HouseCard__image}
         src={photo}
@@ -56,10 +58,10 @@ const HouseCard = ({
 
         <p className={styles.HouseCard__body__rentPrice}>
           Rentabilidad anual bruta:
-          <span className={priceColor}> {cashOnCashReturn.toFixed(2)}%</span>
+          <span className={priceColor}> {grossReturn.toFixed(2)}%</span>
         </p>
       </div>
-    </div>
+    </a>
   );
 };
 
