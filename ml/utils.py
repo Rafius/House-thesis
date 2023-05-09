@@ -317,14 +317,14 @@ def print_results(all_results, model_names, experiment):
     df_results = pd.DataFrame(table_sorted, columns=['Model', 'MAE (Mean)', 'MAE (Std)', 'MAE+StdMean', 'MAE-StdMean'])
 
     # Comprobar si el archivo de Excel existe
-    if os.path.isfile('resultados.xlsx'):
+    if os.path.isfile('results.xlsx'):
         # Cargar el libro de trabajo existente
-        book = load_workbook('resultados.xlsx')
-        writer = pd.ExcelWriter('resultados.xlsx', engine='openpyxl')
+        book = load_workbook('results.xlsx')
+        writer = pd.ExcelWriter('results.xlsx', engine='openpyxl')
         writer.book = book
     else:
         # Crear un nuevo libro de trabajo
-        writer = pd.ExcelWriter('resultados.xlsx', engine='openpyxl')
+        writer = pd.ExcelWriter('results.xlsx', engine='openpyxl')
 
     # Guardar el DataFrame en una nueva hoja
     print(df_results)

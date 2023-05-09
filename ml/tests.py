@@ -44,10 +44,12 @@ def base_test(df, columns_to_add, experiment):
     for i, (train_index, _) in enumerate(kf.split(X_train)):
         print("KFold", i)
         X_train_fold = X.iloc[train_index]
+        X_test_fold = X_test
 
         # print("Transformamos los valores nulos a la mediana de la columna de X_train")
 
-        X_train_fold, X_test_fold = replace_null_with_median(X_train_fold, X_test)
+        if df.isnull().values.any():
+            X_train_fold, X_test_fold = replace_null_with_median(X_train_fold, X_test_fold)
 
         # print("Añadimos variables nuevas")
 
@@ -123,6 +125,8 @@ def test5(df):
     print("Experiment 5")
 
     df = df.dropna()
+    print()
+
     base_test(df, [], "experiment5")
 
 
