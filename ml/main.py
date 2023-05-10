@@ -4,11 +4,12 @@ import time
 
 start_time = time.time()
 
-enable_prints = True
+enable_prints = False
 
 # print("Obtenemos el dataset con las variables que vamos a usar, ya transformadas")
 
 force = False
+
 experiments = [
     {
         "force": force,
@@ -70,9 +71,9 @@ experiments = [
         "columns_to_add": ["neighbors", "neighbors_price_mean"],
     },
     {
-        "force": force,
+        "force": True,
         "id": "Test8",
-        "name": "Remove empty values and and distance to center",
+        "name": "Remove empty values and add distance to center",
         "models": models,
         "remove_empty_values": True,
         "columns_to_add": ["distance_to_center"],

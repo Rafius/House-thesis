@@ -13,6 +13,8 @@ from xgboost import XGBRegressor
 from utils import *
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 import warnings
+from pca import *
+
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 # Numero de vecinos
@@ -104,6 +106,9 @@ def run_experiment(experiment, X_train, y_train, X_test, model_instance):
     # print("Normalizamos los datos")
 
     X_train, X_test = normalize_data(X_train, X_test)
+
+    # pca(X_test)
+    # pca(X_train)
 
     model_instance.fit(X_train, y_train)
     return model_instance.predict(X_test)

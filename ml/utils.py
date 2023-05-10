@@ -48,6 +48,7 @@ def load_dataset(enable_prints=False):
     df = transform_dataset(df, enable_prints)
 
     df = df.loc[:, features]
+
     return df
 
 
@@ -269,7 +270,6 @@ def normalize_data(X_train, X_test=None):
     """
     Normaliza los datos de entrada
     """
-
     scaler = StandardScaler().fit(X_train)
 
     X_train_normalize = scaler.transform(X_train)
@@ -385,6 +385,9 @@ def estimate_houses_to_buy_rent_prices():
 
 
 def clean_missing_values(X_train, X_test, options):
+    """
+    Limpia las valores nulos del dataset usando la media o la mediana
+    """
     if options["type"] == "median":
         return replace_null_with_median(X_train, X_test)
 
@@ -393,17 +396,28 @@ def clean_missing_values(X_train, X_test, options):
 
 
 def pick_best_experiment(exp_results):
+    """
+    Recibe el resultado de los experimentos, y seleccionad el de menor MAE
+    """
+    experiments = []
     best_experiment = None
     for exp_result in exp_results.values():
         for result in exp_result["results"].values():
             for model, model_info in result.items():
-                if best_experiment is None or model_info["MAE"] < best_experiment["model_info"]["MAE"]:
-                    best_experiment = {
-                        "model_info": model_info,
-                        "model": model
-                    }
+                experiment = {
+                    "model_info": model_info,
+                    "model": model
+                }
+                experiments.append(experiment)
 
+                if best_experiment is None or model_info["MAE"] < best_experiment["model_info"]["MAE"]:
+                    best_experiment = experiment
+
+    sorted_experiments = sorted(experiments, key=lambda x: x["model_info"]["MAE"])
+    print(sorted_experiments)
     print(best_experiment["model_info"]["MAE"])
     print(best_experiment["model"])
 
-    print(best_experiment)
+    # sorted_experiments_df = pd.DataFrame(sorted_experiments)
+    #
+    # sorted_experiments_df.to_excel("results.xlsx", index=False)
