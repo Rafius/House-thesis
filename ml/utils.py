@@ -14,8 +14,8 @@ from numpy import std, sqrt
 import os.path
 from openpyxl import load_workbook
 
+
 # Numero de vecinos
-k = 4
 
 
 def load_dataset(enable_prints=False):
@@ -37,7 +37,6 @@ def load_dataset(enable_prints=False):
         # Numero de columnas
         print(len(df.columns))
 
-        print(len(df.columns))
         print(df.columns)
         print(df.isnull().sum())
 
@@ -48,6 +47,7 @@ def load_dataset(enable_prints=False):
 
     df = transform_dataset(df, enable_prints)
 
+    df = df.loc[:, features]
     return df
 
 
@@ -95,7 +95,7 @@ def transform_dataset(df, print_plots=False):
     return df
 
 
-def replace_null_with_median(X_train, X_test=None, options=None):
+def replace_null_with_median(X_train, X_test=None):
     """
     Reemplaza los valores nulos con la mediana de la columna de X_train
     """
@@ -110,12 +110,27 @@ def replace_null_with_median(X_train, X_test=None, options=None):
     return X_train, X_test
 
 
-def get_knn(X_train_fold, X_test, k):
+def replace_null_with_mean(X_train, X_test=None):
+    """
+    Reemplaza los valores nulos con la media de la columna de X_train
+    """
+
+    df_mean = X_train.mean()
+
+    X_train = X_train.fillna(df_mean)
+
+    if X_test is not None:
+        X_test = X_test.fillna(df_mean)
+
+    return X_train, X_test
+
+
+def get_knn(X_train, X_test, k):
     """
     Obtiene los k-vecinos
     """
-    latitudes = X_train_fold['latitude'].apply(radians)
-    longitudes = X_train_fold['longitude'].apply(radians)
+    latitudes = X_train['latitude'].apply(radians)
+    longitudes = X_train['longitude'].apply(radians)
 
     nn = NearestNeighbors(n_neighbors=k, algorithm='ball_tree')
 
@@ -141,21 +156,21 @@ def get_knn(X_train_fold, X_test, k):
     return X_test
 
 
-def get_knn_mean_price(df, X_test):
+def get_knn_mean_price(dataset, y_train):
     """
     Crea una variable con la media de precio de los vecinos
     """
-    for i, row in X_test.iterrows():
+    for i, row in dataset.iterrows():
         prices = []
         for neighbor in row.neighbors:
-            prices.append(df.iloc[neighbor].price)
+            prices.append(y_train.iloc[neighbor])
 
-        X_test.loc[i, 'neighbors_price_mean'] = np.mean(prices)
+        dataset.loc[i, 'neighbors_price_mean'] = np.mean(prices)
 
-    return X_test
+    return dataset
 
 
-def get_distance_to_center(df):
+def get_distance_to_center(dataset):
     """
     Obtiene la distancia de cada vivienda al centro de su ciudad
     """
@@ -165,16 +180,16 @@ def get_distance_to_center(df):
         'Málaga': {'lat': 36.7213, 'lon': -4.4213},
     }
 
-    df['distance_to_center'] = None
+    dataset['distance_to_center'] = None
 
-    for i, row in df.iterrows():
+    for i, row in dataset.iterrows():
         lat, lon = row['latitude'], row['longitude']
         for j, coordinates in enumerate(cities.values()):
             if row['city'] == j:
                 distance = haversine(lat, lon, coordinates['lat'], coordinates['lon'])
-                df.at[i, 'distance_to_center'] = distance
+                dataset.at[i, 'distance_to_center'] = distance
 
-    return df
+    return dataset
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -266,26 +281,26 @@ def normalize_data(X_train, X_test=None):
     return X_train_normalize, X_test_normalize
 
 
-def add_columns(columns_to_add, df, X_train_fold, X_test_fold, k):
+def add_columns(columns_to_add, X_train, X_test, y_train, k):
     """
     Añade columnas al dataset
     """
     for column in columns_to_add:
         if column == "distance_to_center":
-            X_train_fold = get_distance_to_center(X_train_fold)
-            X_test_fold = get_distance_to_center(X_test_fold)
+            X_train = get_distance_to_center(X_train)
+            X_test = get_distance_to_center(X_test)
 
         if column == "neighbors":
-            X_train_fold = get_knn(X_train_fold, X_train_fold, k)
-            X_test_fold = get_knn(X_train_fold, X_test_fold, k)
+            X_train = get_knn(X_train, X_train, k)
+            X_test = get_knn(X_train, X_test, k)
 
         if column == "neighbors_price_mean":
-            X_train_fold = get_knn_mean_price(df, X_train_fold)
-            X_test_fold = get_knn_mean_price(df, X_test_fold)
-            X_train_fold = X_train_fold.drop("neighbors", axis=1)
-            X_test_fold = X_test_fold.drop("neighbors", axis=1)
+            X_train = get_knn_mean_price(X_train, y_train)
+            X_test = get_knn_mean_price(X_test, y_train)
+            X_train = X_train.drop("neighbors", axis=1)
+            X_test = X_test.drop("neighbors", axis=1)
 
-    return X_train_fold, X_test_fold
+    return X_train, X_test
 
 
 def print_results(all_results, model_names, experiment):
@@ -367,3 +382,28 @@ def estimate_houses_to_buy_rent_prices():
     # df_buy = pd.DataFrame(nuevos_datos_con_predicciones, columns=columnas)
     #
     # df_buy.to_json('houses_to_buy.json', orient='records')
+
+
+def clean_missing_values(X_train, X_test, options):
+    if options["type"] == "median":
+        return replace_null_with_median(X_train, X_test)
+
+    elif options["type"] == "mean":
+        return replace_null_with_mean(X_train, X_test)
+
+
+def pick_best_experiment(exp_results):
+    best_experiment = None
+    for exp_result in exp_results.values():
+        for result in exp_result["results"].values():
+            for model, model_info in result.items():
+                if best_experiment is None or model_info["MAE"] < best_experiment["model_info"]["MAE"]:
+                    best_experiment = {
+                        "model_info": model_info,
+                        "model": model
+                    }
+
+    print(best_experiment["model_info"]["MAE"])
+    print(best_experiment["model"])
+
+    print(best_experiment)
