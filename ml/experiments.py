@@ -57,7 +57,7 @@ experiments = [
     {
         "force": force,
         "id": "Test7",
-        "name": "Remove empty values and add new column neighbors mean price ",
+        "name": "Remove empty values and add new column neighbors mean price",
         "models": models,
         "remove_empty_values": True,
         "columns_to_add": ["neighbors", "neighbors_price_mean"],

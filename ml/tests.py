@@ -71,7 +71,7 @@ def base_test(df):
     kf = KFold(n_splits=k_fold_splits, shuffle=True, random_state=42)
 
     for i, (train_index, test_index) in enumerate(kf.split(X)):
-        print("KFold", i)
+
         if f"k_{i}" not in exp_results:
             exp_results[f"k_{i}"] = {"train_index": train_index, "test_index": test_index, "results": {}}
 
@@ -81,19 +81,17 @@ def base_test(df):
         y_test = y.iloc[test_index]
 
         for experiment in experiments:
-            print(experiment["id"])
 
             for model in experiment["models"]:
                 model_class = model['model']
                 model_args = model['model_args']
                 model_name = model['model_name']
-                print(model_name)
 
                 if experiment["id"] not in exp_results[f"k_{i}"]["results"]:
                     exp_results[f"k_{i}"]["results"][experiment["id"]] = {}
 
                 for index, args in enumerate(model_args) or [None]:
-                    print(args)
+                    print("KFold", i, experiment["id"],model_name,args)
 
                     if not experiment["force"] and model_name in exp_results[f"k_{i}"]["results"][experiment["id"]] \
                             and index in exp_results[f"k_{i}"]["results"][experiment["id"]][model_name]:
