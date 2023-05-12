@@ -1,19 +1,13 @@
 import os
 import pickle
 from datetime import datetime
-from sklearn import svm
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import KFold
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPRegressor, MLPClassifier
-from xgboost import XGBRegressor
 from utils import *
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 import warnings
 from pca import *
+from experiments import experiments
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
@@ -22,64 +16,6 @@ k = 4
 
 # Número de divisiones
 k_fold_splits = 5
-
-models = [
-    {
-        "model": LinearRegression,
-        "model_args": {},
-        "model_name": 'LinearRegression'
-    },
-    {
-        "model": DecisionTreeRegressor,
-        "model_args": {},
-        "model_name": 'DecisionTreeRegressor'
-    },
-    {
-        "model": RandomForestRegressor,
-        "model_args": {},
-        "model_name": 'RandomForestRegressor'
-    },
-    {
-        "model": MLPRegressor,
-        "model_args": {},
-        "model_name": 'MLPRegressor'
-    },
-    {
-        "model": GradientBoostingRegressor,
-        "model_args": {},
-        "model_name": 'GradientBoostingRegressor'
-    },
-    {
-        "model": XGBRegressor,
-        "model_args": {},
-        "model_name": 'XGBRegressor'
-    },
-    {
-        "model": DecisionTreeClassifier,
-        "model_args": {},
-        "model_name": 'DecisionTreeClassifier'
-    },
-    {
-        "model": RandomForestClassifier,
-        "model_args": {},
-        "model_name": 'RandomForestClassifier'
-    },
-    {
-        "model": MLPClassifier,
-        "model_args": {},
-        "model_name": 'MLPClassifier'
-    },
-    {
-        "model": svm.SVC,
-        "model_args": {},
-        "model_name": 'SVM'
-    },
-    {
-        "model": KNeighborsClassifier,
-        "model_args": {},
-        "model_name": 'KNN'
-    }
-]
 
 
 def run_experiment(experiment, X_train, y_train, X_test, model_instance):
@@ -111,10 +47,11 @@ def run_experiment(experiment, X_train, y_train, X_test, model_instance):
     # pca(X_train)
 
     model_instance.fit(X_train, y_train)
+
     return model_instance.predict(X_test)
 
 
-def base_test(df, experiments):
+def base_test(df):
     """
     Función para usar como base del experimento
     """
@@ -145,36 +82,54 @@ def base_test(df, experiments):
 
         for experiment in experiments:
             print(experiment["id"])
-            if not experiment["force"] and experiment["id"] in exp_results[f"k_{i}"]["results"]:
-                # print("Skipped experiment", experiment)
-                continue
 
             for model in experiment["models"]:
                 model_class = model['model']
                 model_args = model['model_args']
                 model_name = model['model_name']
-                model_instance = model_class(**model_args)
-
-                tic = datetime.now()
-                y_pred = run_experiment(experiment, X_train, y_train, X_test, model_instance)
-                toc = datetime.now()
-
-                experiment_time_ms = (toc - tic).total_seconds() * 1000
-
-                mae = mean_absolute_error(y_test, y_pred)
+                print(model_name)
 
                 if experiment["id"] not in exp_results[f"k_{i}"]["results"]:
                     exp_results[f"k_{i}"]["results"][experiment["id"]] = {}
 
-                exp_results[f"k_{i}"]["results"][experiment["id"]][model_name] = {'model': experiment, 'MAE': mae,
-                                                                                  "fold": i,
-                                                                                  "predictions": y_pred,
-                                                                                  "experiment_time_ms":
-                                                                                      experiment_time_ms}
+                for index, args in enumerate(model_args) or [None]:
+                    print(args)
 
-                # Guardar resultados
-                with open("results.pkl", "wb") as outfile:
-                    pickle.dump(exp_results, outfile)
+                    if not experiment["force"] and model_name in exp_results[f"k_{i}"]["results"][experiment["id"]] \
+                            and index in exp_results[f"k_{i}"]["results"][experiment["id"]][model_name]:
+                        continue
 
-    # print_results(all_results, model_names, experiment)
+                    model_instance = model_class(**args)
+
+                    tic = datetime.now()
+                    y_pred = run_experiment(experiment, X_train, y_train, X_test, model_instance)
+                    toc = datetime.now()
+
+                    experiment_time_ms = (toc - tic).total_seconds() * 1000
+
+                    mae = mean_absolute_error(y_test, y_pred)
+                    mse = mean_squared_error(y_test, y_pred)
+
+                    ci = calculate_confidence_interval(X_test, y_test, y_pred, mse)
+
+                    if model_name not in exp_results[f"k_{i}"]["results"][experiment["id"]]:
+                        exp_results[f"k_{i}"]["results"][experiment["id"]][model_name] = {}
+
+                    experiment_result = {
+                        'model': experiment,
+                        'MAE': mae,
+                        'MSE': mse,
+                        "ci": ci,
+                        "fold": i,
+                        "predictions": y_pred,
+                        "experiment_time_ms": experiment_time_ms,
+                        "args": args
+                    }
+
+                    exp_results[f"k_{i}"]["results"][experiment["id"]][model_name][index] = experiment_result
+
+                    # Guardar resultados
+                    with open("results.pkl", "wb") as outfile:
+                        pickle.dump(exp_results, outfile)
+
     pick_best_experiment(exp_results)

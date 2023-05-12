@@ -13,6 +13,7 @@ from statistics import mean, stdev
 from numpy import std, sqrt
 import os.path
 from openpyxl import load_workbook
+import scipy.stats as stats
 
 
 # Numero de vecinos
@@ -400,24 +401,45 @@ def pick_best_experiment(exp_results):
     Recibe el resultado de los experimentos, y seleccionad el de menor MAE
     """
     experiments = []
-    best_experiment = None
     for exp_result in exp_results.values():
         for result in exp_result["results"].values():
-            for model, model_info in result.items():
-                experiment = {
-                    "model_info": model_info,
-                    "model": model
-                }
-                experiments.append(experiment)
-
-                if best_experiment is None or model_info["MAE"] < best_experiment["model_info"]["MAE"]:
-                    best_experiment = experiment
+            for model_name, model in result.items():
+                for model_info in model.values():
+                    experiment = {
+                        "model_info": model_info,
+                        "model_name": model_name
+                    }
+                    experiments.append(experiment)
 
     sorted_experiments = sorted(experiments, key=lambda x: x["model_info"]["MAE"])
-    print(sorted_experiments)
+    best_experiment = sorted_experiments[0]
+    print("numero de experimentos: ", len(experiments))
+    # print(sorted_experiments)
     print(best_experiment["model_info"]["MAE"])
-    print(best_experiment["model"])
+    print(best_experiment["model_name"])
+
+    # Crear un pickle con el mejor modelo
 
     # sorted_experiments_df = pd.DataFrame(sorted_experiments)
     #
     # sorted_experiments_df.to_excel("results.xlsx", index=False)
+
+
+def calculate_confidence_interval(X_test, y_test, y_pred, mse):
+    """
+    Sirve para calcular el intervalo de confianza
+    """
+    n = len(y_test)
+    p = X_test.shape[1]
+    se = np.sqrt(mse / (n - p - 1))
+
+    # Calcular el intervalo de confianza del 95% para las predicciones
+    alpha = 0.05
+    t = stats.t.ppf(1 - alpha / 2, n - p - 1)
+    ci = t * se * np.sqrt(1 + 1 / n)
+
+    # Calcular los límites inferior y superior del intervalo de confianza
+    # lower_ci = y_pred - ci
+    # upper_ci = y_pred + ci
+
+    return  ci
