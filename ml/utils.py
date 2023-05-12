@@ -406,8 +406,8 @@ def pick_best_experiment(exp_results):
             for model_name, model in result.items():
                 for model_info in model.values():
                     experiment = {
-                        "model_info": model_info,
-                        "model_name": model_name
+                        "model_name": model_name,
+                        "model_info": model_info
                     }
                     experiments.append(experiment)
 
@@ -442,4 +442,18 @@ def calculate_confidence_interval(X_test, y_test, y_pred, mse):
     # lower_ci = y_pred - ci
     # upper_ci = y_pred + ci
 
-    return  ci
+    return ci
+
+    # x = y_pred
+    # m = x.mean()
+    # s = x.std()
+    # dof = len(x) - 1
+    # confidence = 0.95
+    #
+    # t_crit = np.abs(stats.t.ppf((1 - confidence) / 2, dof))
+    #
+    # low = m - s * t_crit / np.sqrt(len(x))
+    # high = m + s * t_crit / np.sqrt(len(x))
+
+    # print(low, high)
+    # print("test")

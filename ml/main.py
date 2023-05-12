@@ -8,7 +8,6 @@ enable_prints = False
 
 # print("Obtenemos el dataset con las variables que vamos a usar, ya transformadas")
 
-
 df = load_dataset(enable_prints)
 
 base_test(df)
