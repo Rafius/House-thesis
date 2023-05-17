@@ -93,5 +93,13 @@ experiments = [
         "models": models,
         "remove_empty_values": True,
         "columns_to_remove": ["usableArea"],
+    },
+    {
+        "force": force,
+        "id": "Test12",
+        "name": "Remove usableArea column",
+        "models": models,
+        "remove_empty_values": True,
+        "binning": True
     }
 ]

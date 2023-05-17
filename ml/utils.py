@@ -401,9 +401,9 @@ def show_results(exp_results):
     Recibe el resultado de los experimentos, y seleccionad el de menor MAE
     """
     #
-    # best_experiment = get_best_experiment(exp_results)
-    # results_by_model = get_results_per_model(exp_results)
-    # boxplot_mae_per_k(exp_results)
+    best_experiment = get_best_experiment(exp_results)
+    results_by_model = get_results_per_model(exp_results)
+    boxplot_mae_per_k(exp_results)
     histogram_abs_price_error(exp_results)
     histogram_abs_percentage_error(exp_results)
 
@@ -532,3 +532,7 @@ def calculate_confidence_interval(X_test, y_test, mse):
 
 def get_error_percentage(y_test, y_pred):
     return abs(y_pred - y_test) / y_test * 100
+
+
+def discretize_price(price):
+    return np.floor_divide(price, 10) * 10

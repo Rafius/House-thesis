@@ -39,6 +39,10 @@ def run_experiment(experiment, X_train, y_train, X_test, model_instance):
         X_train = X_train.dropna()
         X_test = X_test.dropna()
 
+    if "binning" in experiment and experiment["binning"]:
+        y_train = discretize_price(y_train)
+
+
     # print("Normalizamos los datos")
 
     X_train, X_test = normalize_data(X_train, X_test)
@@ -105,7 +109,6 @@ def run_test(df):
 
                     mae = mean_absolute_error(y_test, y_pred)
                     mse = mean_squared_error(y_test, y_pred)
-                    mae_percentage = get_mae_percentage(y_test, y_pred)
 
                     ci = calculate_confidence_interval(X_test, y_test, mse)
 
@@ -118,7 +121,6 @@ def run_test(df):
                         "experiment_time_ms": experiment_time_ms,
                         "fold": i,
                         'mae': mae,
-                        "mae_percentage": mae_percentage,
                         'model': experiment,
                         'mse': mse,
                         "predictions": y_pred,
