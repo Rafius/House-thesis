@@ -403,16 +403,11 @@ def show_results(exp_results):
     #
     # best_experiment = get_best_experiment(exp_results)
     # results_by_model = get_results_per_model(exp_results)
-    mae_per_k = get_mae_per_k(exp_results)
-
-    # Crear un pickle con el mejor modelo
-
-    # sorted_experiments_df = pd.DataFrame(sorted_experiments)
-    #
-    # sorted_experiments_df.to_excel("results.xlsx", index=False)
+    # boxplot_mae_per_k(exp_results)
+    histogram_abs_price_error(exp_results)
+    histogram_abs_percentage_error(exp_results)
 
     # Dos tipos de boxplot un boxplot por modelo, donde cada caja es un conjunto de parametros distintos solo para los que tiene parametros
-    # Hacer otro boxplot para las variaciones de k haciendo media de mae
     # Histograma con abs del precio real - precio estimado para ver el error, y ver errores entre 0-50€, 50€-100€
     # Histograma con abs del precio real % precio estimado para ver el error, y ver errores entre 0-50€, 50€-100€
 
@@ -455,52 +450,67 @@ def get_results_per_model(exp_results):
     return results_by_models
 
 
-def get_mae_per_k(exp_results):
-    mae_per_k = {}
-    for k_name, k_data in exp_results.items():
-        if k_name not in mae_per_k:
-            mae_per_k[k_name] = []
+def boxplot_mae_per_k(exp_results):
+    mae_per_k = []
+    for k_data in exp_results.values():
+        temp_array = []
 
         for result in k_data["results"].values():
             for model_name, model_results in result.items():
 
                 for mode_result in model_results.values():
-                    mae_per_k[k_name].append(mode_result["mae"])
+                    temp_array.append(mode_result["mae"])
 
-        mae_per_k[k_name] = np.mean(mae_per_k[k_name] )
+        mae_per_k.append(np.mean(temp_array))
 
+    plt.boxplot(mae_per_k)
 
-    # plt.boxplot(mae_per_k)
-    #
-    # # Personalizar el gráfico
-    # plt.title('Boxplot')
-    # plt.xlabel('Datos')
-    # plt.ylabel('Valores')
-    #
-    # # Mostrar el gráfico
-    # plt.show()
-    return mae_per_k
+    # Personalizar el gráfico
+    plt.title('Boxplot')
+    plt.xlabel('Datos')
+    plt.ylabel('Valores')
+
+    # Mostrar el gráfico
+    plt.show()
 
 
-def show_histograms(data):
-    # Crear figura y subtramas
-    fig, (ax1, ax2) = plt.subplots(2, 1)
+def histogram_abs_price_error(exp_results):
+    errors = []
 
-    ax1.hist(data["mae_percentage"], bins=20, alpha=0.5)
-    ax1.set_xlabel('Valores')
-    ax1.set_ylabel('Frecuencia')
-    ax1.set_title('Histograma Data 1')
+    for exp_result in exp_results.values():
+        for result in exp_result["results"].values():
+            for model_name, model in result.items():
+                for model_info in model.values():
+                    test = abs(model_info["predictions"] - model_info["y_test"])
+                    errors.append(test.values)
 
-    # Histograma 2
-    ax2.hist(data["mae"], bins=20, alpha=0.5)
-    ax2.set_xlabel('Valores')
-    ax2.set_ylabel('Frecuencia')
-    ax2.set_title('Histograma Data 2')
+    # Crear el histograma
+    plt.hist(errors)
 
-    # Ajustar el espaciado entre subtramas
-    fig.tight_layout()
+    # Personalizar el histograma
+    plt.title('Histograma')
+    plt.xlabel('Error medio')
+    plt.ylabel('Frecuencia')
+    plt.show()
 
-    # Mostrar los histogramas
+
+def histogram_abs_percentage_error(exp_results):
+    errors = []
+
+    for exp_result in exp_results.values():
+        for result in exp_result["results"].values():
+            for model_name, model in result.items():
+                for model_info in model.values():
+                    test = get_error_percentage(model_info["y_test"], model_info["predictions"])
+                    errors.append(test.values)
+
+    # Crear el histograma
+    plt.hist(errors)
+
+    # Personalizar el histograma
+    plt.title('Histograma')
+    plt.xlabel('Error porcentual')
+    plt.ylabel('Frecuencia')
     plt.show()
 
 
@@ -520,5 +530,5 @@ def calculate_confidence_interval(X_test, y_test, mse):
     return ci
 
 
-def get_mae_percentage(y_test, y_pred):
+def get_error_percentage(y_test, y_pred):
     return abs(y_pred - y_test) / y_test * 100
