@@ -51,7 +51,7 @@ def run_experiment(experiment, X_train, y_train, X_test, model_instance):
     return model_instance.predict(X_test)
 
 
-def base_test(df):
+def run_test(df):
     """
     Función para usar como base del experimento
     """
@@ -64,8 +64,6 @@ def base_test(df):
     if os.path.exists("results.pkl"):
         with open("results.pkl", "rb") as infile:
             exp_results = pickle.load(infile)
-
-    # print(exp_results)
 
     # print("Aplico k-fold")
     kf = KFold(n_splits=k_fold_splits, shuffle=True, random_state=42)
@@ -91,7 +89,7 @@ def base_test(df):
                     exp_results[f"k_{i}"]["results"][experiment["id"]] = {}
 
                 for index, args in enumerate(model_args) or [None]:
-                    print("KFold", i, experiment["id"],model_name,args)
+                    print("KFold", i, experiment["id"], model_name, args)
 
                     if not experiment["force"] and model_name in exp_results[f"k_{i}"]["results"][experiment["id"]] \
                             and index in exp_results[f"k_{i}"]["results"][experiment["id"]][model_name]:
@@ -107,21 +105,24 @@ def base_test(df):
 
                     mae = mean_absolute_error(y_test, y_pred)
                     mse = mean_squared_error(y_test, y_pred)
+                    mae_percentage = get_mae_percentage(y_test, y_pred)
 
-                    ci = calculate_confidence_interval(X_test, y_test, y_pred, mse)
+                    ci = calculate_confidence_interval(X_test, y_test, mse)
 
                     if model_name not in exp_results[f"k_{i}"]["results"][experiment["id"]]:
                         exp_results[f"k_{i}"]["results"][experiment["id"]][model_name] = {}
 
                     experiment_result = {
-                        'model': experiment,
-                        'MAE': mae,
-                        'MSE': mse,
+                        "args": args,
                         "ci": ci,
-                        "fold": i,
-                        "predictions": y_pred,
                         "experiment_time_ms": experiment_time_ms,
-                        "args": args
+                        "fold": i,
+                        'mae': mae,
+                        "mae_percentage": mae_percentage,
+                        'model': experiment,
+                        'mse': mse,
+                        "predictions": y_pred,
+                        "y_test": y_test
                     }
 
                     exp_results[f"k_{i}"]["results"][experiment["id"]][model_name][index] = experiment_result
@@ -130,4 +131,4 @@ def base_test(df):
                     with open("results.pkl", "wb") as outfile:
                         pickle.dump(exp_results, outfile)
 
-    pick_best_experiment(exp_results)
+    show_results(exp_results)

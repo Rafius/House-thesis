@@ -396,7 +396,28 @@ def clean_missing_values(X_train, X_test, options):
         return replace_null_with_mean(X_train, X_test)
 
 
-def pick_best_experiment(exp_results):
+def show_results(exp_results):
+    """
+    Recibe el resultado de los experimentos, y seleccionad el de menor MAE
+    """
+    #
+    # best_experiment = get_best_experiment(exp_results)
+    # results_by_model = get_results_per_model(exp_results)
+    mae_per_k = get_mae_per_k(exp_results)
+
+    # Crear un pickle con el mejor modelo
+
+    # sorted_experiments_df = pd.DataFrame(sorted_experiments)
+    #
+    # sorted_experiments_df.to_excel("results.xlsx", index=False)
+
+    # Dos tipos de boxplot un boxplot por modelo, donde cada caja es un conjunto de parametros distintos solo para los que tiene parametros
+    # Hacer otro boxplot para las variaciones de k haciendo media de mae
+    # Histograma con abs del precio real - precio estimado para ver el error, y ver errores entre 0-50€, 50€-100€
+    # Histograma con abs del precio real % precio estimado para ver el error, y ver errores entre 0-50€, 50€-100€
+
+
+def get_best_experiment(exp_results):
     """
     Recibe el resultado de los experimentos, y seleccionad el de menor MAE
     """
@@ -411,21 +432,79 @@ def pick_best_experiment(exp_results):
                     }
                     experiments.append(experiment)
 
-    sorted_experiments = sorted(experiments, key=lambda x: x["model_info"]["MAE"])
+    sorted_experiments = sorted(experiments, key=lambda x: x["model_info"]["mae"])
     best_experiment = sorted_experiments[0]
     print("numero de experimentos: ", len(experiments))
-    # print(sorted_experiments)
-    print(best_experiment["model_info"]["MAE"])
+    print(best_experiment["model_info"]["mae"])
     print(best_experiment["model_name"])
 
-    # Crear un pickle con el mejor modelo
+    return best_experiment
 
-    # sorted_experiments_df = pd.DataFrame(sorted_experiments)
+
+def get_results_per_model(exp_results):
+    results_by_models = {}
+    for k in exp_results.values():
+        for result in k["results"].values():
+            for model_name, model_results in result.items():
+                if model_name not in results_by_models:
+                    results_by_models[model_name] = []
+
+                for mode_result in model_results.values():
+                    results_by_models[model_name].append(mode_result)
+
+    return results_by_models
+
+
+def get_mae_per_k(exp_results):
+    mae_per_k = {}
+    for k_name, k_data in exp_results.items():
+        if k_name not in mae_per_k:
+            mae_per_k[k_name] = []
+
+        for result in k_data["results"].values():
+            for model_name, model_results in result.items():
+
+                for mode_result in model_results.values():
+                    mae_per_k[k_name].append(mode_result["mae"])
+
+        mae_per_k[k_name] = np.mean(mae_per_k[k_name] )
+
+
+    # plt.boxplot(mae_per_k)
     #
-    # sorted_experiments_df.to_excel("results.xlsx", index=False)
+    # # Personalizar el gráfico
+    # plt.title('Boxplot')
+    # plt.xlabel('Datos')
+    # plt.ylabel('Valores')
+    #
+    # # Mostrar el gráfico
+    # plt.show()
+    return mae_per_k
 
 
-def calculate_confidence_interval(X_test, y_test, y_pred, mse):
+def show_histograms(data):
+    # Crear figura y subtramas
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+
+    ax1.hist(data["mae_percentage"], bins=20, alpha=0.5)
+    ax1.set_xlabel('Valores')
+    ax1.set_ylabel('Frecuencia')
+    ax1.set_title('Histograma Data 1')
+
+    # Histograma 2
+    ax2.hist(data["mae"], bins=20, alpha=0.5)
+    ax2.set_xlabel('Valores')
+    ax2.set_ylabel('Frecuencia')
+    ax2.set_title('Histograma Data 2')
+
+    # Ajustar el espaciado entre subtramas
+    fig.tight_layout()
+
+    # Mostrar los histogramas
+    plt.show()
+
+
+def calculate_confidence_interval(X_test, y_test, mse):
     """
     Sirve para calcular el intervalo de confianza
     """
@@ -438,22 +517,8 @@ def calculate_confidence_interval(X_test, y_test, y_pred, mse):
     t = stats.t.ppf(1 - alpha / 2, n - p - 1)
     ci = t * se * np.sqrt(1 + 1 / n)
 
-    # Calcular los límites inferior y superior del intervalo de confianza
-    # lower_ci = y_pred - ci
-    # upper_ci = y_pred + ci
-
     return ci
 
-    # x = y_pred
-    # m = x.mean()
-    # s = x.std()
-    # dof = len(x) - 1
-    # confidence = 0.95
-    #
-    # t_crit = np.abs(stats.t.ppf((1 - confidence) / 2, dof))
-    #
-    # low = m - s * t_crit / np.sqrt(len(x))
-    # high = m + s * t_crit / np.sqrt(len(x))
 
-    # print(low, high)
-    # print("test")
+def get_mae_percentage(y_test, y_pred):
+    return abs(y_pred - y_test) / y_test * 100

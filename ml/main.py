@@ -10,7 +10,7 @@ enable_prints = False
 
 df = load_dataset(enable_prints)
 
-base_test(df)
+run_test(df)
 
 # estimate_houses_to_buy_rent_prices()
 
