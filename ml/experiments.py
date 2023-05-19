@@ -97,9 +97,10 @@ experiments = [
     {
         "force": force,
         "id": "Test12",
-        "name": "Remove usableArea column",
+        "name": "Remove empty values and add distance to center and binning prices",
         "models": models,
         "remove_empty_values": True,
-        "binning": True
+        "binning": True,
+        "columns_to_add": ["distance_to_center"],
     }
 ]

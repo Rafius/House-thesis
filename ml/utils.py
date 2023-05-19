@@ -26,8 +26,7 @@ def load_dataset(enable_prints=False):
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
 
     features = ['price', 'city', 'builtArea', 'usableArea', 'bedrooms', 'bathrooms', 'floor', 'elevator',
-                'houseHeating',
-                'terrace', 'swimmingPool', "latitude", "longitude"]
+                'houseHeating', 'terrace', 'swimmingPool', "latitude", "longitude"]
 
     df = df.loc[:, features]
 
@@ -72,7 +71,6 @@ def transform_dataset(df, print_plots=False):
     df['bathrooms'] = df['bathrooms'].replace('', 1)
     df['bathrooms'].fillna(1, inplace=True)
 
-    #
     # boolean_dict = {True: 1, False: 0}
     #
     # df["elevator"] = df['elevator'].map(boolean_dict)
@@ -304,52 +302,6 @@ def add_columns(columns_to_add, X_train, X_test, y_train, k):
     return X_train, X_test
 
 
-def print_results(all_results, model_names, experiment):
-    """
-    Pinta los resultados de los experimentos
-    """
-    for results in all_results:
-        sorted_results = sorted(results, key=lambda x: x['MAE'])
-        table = []
-        for result in sorted_results:
-            table.append([result['model'], result['MAE'], result['fold']])
-        # print("\n", tabulate(table, headers=['Model', 'MAE', 'Fold'], floatfmt='.2f',
-        #                      tablefmt='orgtbl'))
-
-    table = []
-    for i, model_name in enumerate(model_names):
-        maes = [result[i]['MAE'] for result in all_results]
-        mean_mae = mean(maes)
-        std_mae = stdev(maes)
-        std_mean_mae = std(maes) / sqrt(len(maes))
-
-        table.append([model_name, mean_mae, std_mae, mean_mae + std_mean_mae, mean_mae - std_mean_mae])
-
-    table_sorted = sorted(table, key=lambda x: x[1])
-    # print("\n", tabulate(table_sorted, headers=['Model', 'MAE (Mean)', 'MAE (Std)', 'MAE+StdMean', 'MAE-StdMean'],
-    #                      floatfmt='.2f', tablefmt='orgtbl'))
-
-    # Convertir la tabla de resultados en un DataFrame
-    df_results = pd.DataFrame(table_sorted, columns=['Model', 'MAE (Mean)', 'MAE (Std)', 'MAE+StdMean', 'MAE-StdMean'])
-
-    # Comprobar si el archivo de Excel existe
-    if os.path.isfile('results.xlsx'):
-        # Cargar el libro de trabajo existente
-        book = load_workbook('results.xlsx')
-        writer = pd.ExcelWriter('results.xlsx', engine='openpyxl')
-        writer.book = book
-    else:
-        # Crear un nuevo libro de trabajo
-        writer = pd.ExcelWriter('results.xlsx', engine='openpyxl')
-
-    # Guardar el DataFrame en una nueva hoja
-    print(df_results)
-    df_results.to_excel(writer, sheet_name=experiment, index=False)
-
-    # Cerrar el objeto writer
-    writer.close()
-
-
 def estimate_houses_to_buy_rent_prices():
     """
     Estima los precios de alquiler de los pisos en venta
@@ -396,16 +348,29 @@ def clean_missing_values(X_train, X_test, options):
         return replace_null_with_mean(X_train, X_test)
 
 
+histogram_ranges = [
+    {"min_range": 0, "max_range": 500},
+    {"min_range": 501, "max_range": 1000},
+    {"min_range": 1001, "max_range": 2000},
+    {"min_range": 2001, "max_range": 5000},
+    {"min_range": 5001, "max_range": 10000},
+    {"min_range": 10001, "max_range": 100000}
+]
+
+
 def show_results(exp_results):
     """
     Recibe el resultado de los experimentos, y seleccionad el de menor MAE
     """
     #
-    best_experiment = get_best_experiment(exp_results)
-    results_by_model = get_results_per_model(exp_results)
-    boxplot_mae_per_k(exp_results)
-    histogram_abs_price_error(exp_results)
-    histogram_abs_percentage_error(exp_results)
+    # best_experiment = get_best_experiment(exp_results)
+    # results_by_model = get_results_per_model(exp_results)
+    # boxplot_mae_per_k(exp_results)
+    for ranges in histogram_ranges:
+        min_range = ranges["min_range"]
+        max_range = ranges["max_range"]
+        histogram_abs_price_error(exp_results, min_range, max_range)
+        histogram_abs_percentage_error(exp_results, min_range, max_range)
 
     # Dos tipos de boxplot un boxplot por modelo, donde cada caja es un conjunto de parametros distintos solo para los que tiene parametros
     # Histograma con abs del precio real - precio estimado para ver el error, y ver errores entre 0-50€, 50€-100€
@@ -447,6 +412,9 @@ def get_results_per_model(exp_results):
                 for mode_result in model_results.values():
                     results_by_models[model_name].append(mode_result)
 
+    for model_name, result in results_by_models.items():
+        results_by_models[model_name] = sorted(result, key=lambda x: x["mae"])
+
     return results_by_models
 
 
@@ -465,50 +433,52 @@ def boxplot_mae_per_k(exp_results):
 
     plt.boxplot(mae_per_k)
 
-    # Personalizar el gráfico
-    plt.title('Boxplot')
-    plt.xlabel('Datos')
+    plt.title('Media de mae por k-fold')
+    plt.xlabel('Mae')
     plt.ylabel('Valores')
 
-    # Mostrar el gráfico
     plt.show()
 
 
-def histogram_abs_price_error(exp_results):
+def histogram_abs_price_error(exp_results, min_range, max_range):
     errors = []
 
     for exp_result in exp_results.values():
         for result in exp_result["results"].values():
             for model_name, model in result.items():
                 for model_info in model.values():
-                    test = abs(model_info["predictions"] - model_info["y_test"])
-                    errors.append(test.values)
+                    for i, price in enumerate(model_info["y_test"]):
+                        if price < min_range or price > max_range: continue
 
-    # Crear el histograma
-    plt.hist(errors)
+                        prediction = model_info["predictions"][i]
+                        test = abs(prediction - price)
+                        errors.append(test)
 
-    # Personalizar el histograma
-    plt.title('Histograma')
+    plt.hist(errors, rwidth=0.85)
+
+    plt.title(f'Error medio de los experimentos entre {min_range}€ y {max_range}€')
     plt.xlabel('Error medio')
     plt.ylabel('Frecuencia')
     plt.show()
 
 
-def histogram_abs_percentage_error(exp_results):
+def histogram_abs_percentage_error(exp_results, min_range, max_range):
     errors = []
 
     for exp_result in exp_results.values():
         for result in exp_result["results"].values():
             for model_name, model in result.items():
                 for model_info in model.values():
-                    test = get_error_percentage(model_info["y_test"], model_info["predictions"])
-                    errors.append(test.values)
+                    for i, price in enumerate(model_info["y_test"]):
+                        if price < min_range or price > max_range: continue
 
-    # Crear el histograma
-    plt.hist(errors)
+                        prediction = model_info["predictions"][i]
+                        test = get_error_percentage(price, prediction)
+                        errors.append(test)
 
-    # Personalizar el histograma
-    plt.title('Histograma')
+    plt.hist(errors, rwidth=0.85)
+
+    plt.title(f'Error porcentual de los experimentos entre {min_range}€ y {max_range}€')
     plt.xlabel('Error porcentual')
     plt.ylabel('Frecuencia')
     plt.show()

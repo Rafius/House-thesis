@@ -46,7 +46,6 @@ def run_experiment(experiment, X_train, y_train, X_test, model_instance):
     # print("Normalizamos los datos")
 
     X_train, X_test = normalize_data(X_train, X_test)
-
     # pca(X_test)
     # pca(X_train)
 
