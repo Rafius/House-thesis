@@ -363,18 +363,18 @@ def show_results(exp_results):
     Recibe el resultado de los experimentos, y seleccionad el de menor MAE
     """
     #
-    # best_experiment = get_best_experiment(exp_results)
-    # results_by_model = get_results_per_model(exp_results)
-    # boxplot_mae_per_k(exp_results)
-    for ranges in histogram_ranges:
-        min_range = ranges["min_range"]
-        max_range = ranges["max_range"]
-        histogram_abs_price_error(exp_results, min_range, max_range)
-        histogram_abs_percentage_error(exp_results, min_range, max_range)
+    best_experiment = get_best_experiment(exp_results)
+    mae_per_model = get_mae_per_model(exp_results)
+    boxplot_mae_per_model(mae_per_model)
+    # boxplot_mae_per_experiment_per_model(exp_results)
 
-    # Dos tipos de boxplot un boxplot por modelo, donde cada caja es un conjunto de parametros distintos solo para los que tiene parametros
-    # Histograma con abs del precio real - precio estimado para ver el error, y ver errores entre 0-50€, 50€-100€
-    # Histograma con abs del precio real % precio estimado para ver el error, y ver errores entre 0-50€, 50€-100€
+    # for ranges in histogram_ranges:
+    #     min_range = ranges["min_range"]
+    #     max_range = ranges["max_range"]
+    #     histogram_abs_price_error(exp_results, min_range, max_range)
+    #     histogram_abs_percentage_error(exp_results, min_range, max_range)
+
+    # boxplot donde cada caja es un conjunto de parametros distintos solo para los que tiene parametros
 
 
 def get_best_experiment(exp_results):
@@ -401,23 +401,6 @@ def get_best_experiment(exp_results):
     return best_experiment
 
 
-def get_results_per_model(exp_results):
-    results_by_models = {}
-    for k in exp_results.values():
-        for result in k["results"].values():
-            for model_name, model_results in result.items():
-                if model_name not in results_by_models:
-                    results_by_models[model_name] = []
-
-                for mode_result in model_results.values():
-                    results_by_models[model_name].append(mode_result)
-
-    for model_name, result in results_by_models.items():
-        results_by_models[model_name] = sorted(result, key=lambda x: x["mae"])
-
-    return results_by_models
-
-
 def boxplot_mae_per_k(exp_results):
     mae_per_k = []
     for k_data in exp_results.values():
@@ -438,6 +421,98 @@ def boxplot_mae_per_k(exp_results):
     plt.ylabel('Valores')
 
     plt.show()
+
+
+def get_mae_per_model(exp_results):
+    mae_per_model = {}
+    for k_name, k in exp_results.items():
+        for result in k["results"].values():
+            for model_name, model_results in result.items():
+                if model_name not in mae_per_model:
+                    mae_per_model[model_name] = {}
+
+                for model_result in model_results.values():
+                    experiment_id = model_result["model"]["id"]
+
+                    if experiment_id not in mae_per_model[model_name]:
+                        mae_per_model[model_name][experiment_id] = []
+
+                    mae_per_model[model_name][experiment_id].append(model_result)
+
+    final_mae_per_model = {}
+    for model_name, experiments in mae_per_model.items():
+        if model_name not in mae_per_model[model_name]:
+            final_mae_per_model[model_name] = {}
+
+        for experiment_name, experiment in experiments.items():
+            mae_experiment = []
+            for iteration in experiment:
+
+                if experiment_name not in final_mae_per_model[model_name]:
+                    final_mae_per_model[model_name][experiment_name] = []
+
+                mae_experiment.append(iteration["mae"])
+
+            final_mae_per_model[model_name][experiment_name].append(mae_experiment)
+
+    return final_mae_per_model
+
+
+def boxplot_mae_per_model(mae_per_model):
+    for model_name, model_data in mae_per_model.items():
+        all_values = []
+
+        # Agregar cada valor individual a la lista
+        for i, value in enumerate(model_data.values()):
+            all_values.extend(value)
+
+        data = all_values
+
+        # Creating axes instance
+
+        plt.boxplot(data)
+
+        plt.show()
+
+        # # Crear la figura y los subplots
+        # fig, axs = plt.subplots(nrows=3, ncols=4, figsize=(12, 9))
+        # axs = axs.flatten()
+        #
+        # # Crear los boxplots
+        # for i, (test, values) in enumerate(model_data.items()):
+        #     axs[i].boxplot(values)
+        #     axs[i].set_title(test)
+        #
+        # # Ajustar el espaciado entre los subplots
+        # plt.tight_layout()
+        #
+        # # Mostrar el gráfico
+        # plt.show()
+
+
+def get_mae_per_experiment(exp_results):
+    results_per_model_per_experiment = {}
+    for k_name, k in exp_results.items():
+        for result in k["results"].values():
+            for model_name, model_results in result.items():
+                if model_name not in results_per_model_per_experiment:
+                    results_per_model_per_experiment[model_name] = {}
+
+                for mode_result in model_results.values():
+                    if k_name not in results_per_model_per_experiment[model_name]:
+                        results_per_model_per_experiment[model_name][k_name] = []
+
+                    results_per_model_per_experiment[model_name][k_name].append(mode_result)
+
+    # results_per_model_per_experiment_with_mae = {}
+    # for result in results_per_model_per_experiment.values():
+    #     for k_name, k in result.items():
+    #         for iteration in k:
+    #             if k_name not in results_per_model_per_experiment[model_name]:
+    #                 results_per_model_per_experiment_with_mae[model_name][k_name] = []
+    #             print(iteration["mae"])
+
+    return results_per_model_per_experiment
 
 
 def histogram_abs_price_error(exp_results, min_range, max_range):
@@ -484,13 +559,13 @@ def histogram_abs_percentage_error(exp_results, min_range, max_range):
     plt.show()
 
 
-def calculate_confidence_interval(X_test, y_test, mse):
+def calculate_confidence_interval(X_test, y_test, mae):
     """
     Sirve para calcular el intervalo de confianza
     """
     n = len(y_test)
     p = X_test.shape[1]
-    se = np.sqrt(mse / (n - p - 1))
+    se = np.sqrt(mae / (n - p - 1))
 
     # Calcular el intervalo de confianza del 95% para las predicciones
     alpha = 0.05

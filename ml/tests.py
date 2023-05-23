@@ -107,9 +107,8 @@ def run_test(df):
                     experiment_time_ms = (toc - tic).total_seconds() * 1000
 
                     mae = mean_absolute_error(y_test, y_pred)
-                    mse = mean_squared_error(y_test, y_pred)
 
-                    ci = calculate_confidence_interval(X_test, y_test, mse)
+                    ci = calculate_confidence_interval(X_test, y_test, mae)
 
                     if model_name not in exp_results[f"k_{i}"]["results"][experiment["id"]]:
                         exp_results[f"k_{i}"]["results"][experiment["id"]][model_name] = {}
@@ -121,7 +120,6 @@ def run_test(df):
                         "fold": i,
                         'mae': mae,
                         'model': experiment,
-                        'mse': mse,
                         "predictions": y_pred,
                         "y_test": y_test
                     }
