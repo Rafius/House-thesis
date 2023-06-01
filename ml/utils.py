@@ -16,14 +16,14 @@ from openpyxl import load_workbook
 import scipy.stats as stats
 
 
-# Numero de vecinos
-
-
-def load_dataset(enable_prints=False):
+def load_dataset(enable_prints):
     """
     Carga el dataset y elige las columnas
     """
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
+
+    # if "latitude" not in df:
+    # df = get_coordinates(df)
 
     features = ['price', 'city', 'builtArea', 'usableArea', 'bedrooms', 'bathrooms', 'floor', 'elevator',
                 'houseHeating', 'terrace', 'swimmingPool', "latitude", "longitude"]
@@ -40,8 +40,6 @@ def load_dataset(enable_prints=False):
         print(df.columns)
         print(df.isnull().sum())
 
-    # df = get_coordinates(df)
-
     df = df.dropna(subset=['latitude'])
     df = df.dropna(subset=['price'])
 
@@ -52,12 +50,13 @@ def load_dataset(enable_prints=False):
     return df
 
 
-def transform_dataset(df, print_plots=False):
+def transform_dataset(df, enable_prints):
     """
     Transforma las variables a numéricas
     """
 
     df['price'] = pd.to_numeric(df['price'], errors='coerce')
+    df = df.drop(df[df['price'] > 5000].index)
 
     df['builtArea'] = pd.to_numeric(df['builtArea'], errors='coerce')
 
@@ -71,8 +70,8 @@ def transform_dataset(df, print_plots=False):
     df['bathrooms'] = df['bathrooms'].replace('', 1)
     df['bathrooms'].fillna(1, inplace=True)
 
-    # boolean_dict = {True: 1, False: 0}
-    #
+    boolean_dict = {True: 1, False: 0}
+
     # df["elevator"] = df['elevator'].map(boolean_dict)
     # df["houseHeating"] = df['houseHeating'].map(boolean_dict)
     # df["terrace"] = df['terrace'].map(boolean_dict)
@@ -84,13 +83,9 @@ def transform_dataset(df, print_plots=False):
     df['floor'] = df['floor'].replace(floor_dict)
     df['floor'] = pd.to_numeric(df['floor'], errors='coerce')
 
-    if print_plots:
-        loc_geom = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
-        df = gpd.GeoDataFrame(df, geometry=loc_geom)
-
-        df.plot()
-        df.hist(bins=50, figsize=(15, 15))
-        plt.show()
+    if enable_prints:
+        # print_geolocation_plot(df)
+        print_dataset_histograms(df)
 
     return df
 
@@ -241,10 +236,10 @@ def get_coordinates(df):
     for index, row in df.iterrows():
         row = df.iloc[index]
         address = clean_address(row['title'])
-        city = row["city"]
+        city = row["city"] + row["location"]
         region = city + ', España'
         params = {
-            'access_key': 'e8ab79b0edab30e9b58f2773fa1caf5e',
+            'access_key': '32b0f1dfeb0dcdecaba6fa5353098981',
             'query': address,
             'limit': 1,
             "region": region
@@ -261,6 +256,8 @@ def get_coordinates(df):
             print(index, location["latitude"], location["longitude"], address, region)
         else:
             print(f"Could not find location for address: {index}{address} {region}")
+
+        df.to_csv('houses_v0.csv', index=False)
 
     return df
 
@@ -360,26 +357,55 @@ histogram_ranges = [
 
 def show_results(exp_results):
     """
-    Recibe el resultado de los experimentos, y seleccionad el de menor MAE
+    Recibe el resultado de los experimentos, y pinta los datos en distintos graficos
     """
     #
-    best_experiment = get_best_experiment(exp_results)
-    mae_per_model = get_mae_per_model(exp_results)
-    boxplot_mae_per_model(mae_per_model)
-    # boxplot_mae_per_experiment_per_model(exp_results)
-
+    # best_experiments = get_best_experiment(exp_results)
+    # mae_per_model = get_mae_per_model(exp_results)
+    # boxplot_mae_per_model(mae_per_model)
+    # mae_per_experiment = get_mae_per_experiment(exp_results)
+    # boxplot_mae_per_experiment(mae_per_experiment)
+    # print_mae_percentage_vs_real_price(exp_results)
+    # print_predicted_price_vs_real_price(exp_results)
+    get_best_and_worse_houses(exp_results)
     # for ranges in histogram_ranges:
     #     min_range = ranges["min_range"]
     #     max_range = ranges["max_range"]
     #     histogram_abs_price_error(exp_results, min_range, max_range)
     #     histogram_abs_percentage_error(exp_results, min_range, max_range)
 
-    # boxplot donde cada caja es un conjunto de parametros distintos solo para los que tiene parametros
+
+def print_mae_percentage_vs_real_price(exp_results):
+    for k_name, k in exp_results.items():
+        for result in k["results"].values():
+            for model_name, model_results in result.items():
+                for model_result in model_results.values():
+                    y_test = model_result["y_test"]
+                    mae_percentage = get_error_percentage(y_test, model_result["predictions"])
+                    plt.scatter(mae_percentage, y_test)
+                    plt.xlabel("Error porcentual")
+                    plt.ylabel("Precios reales")
+                    plt.title("Comparación de precios reales y porcentaje de error")
+                    plt.show()
+
+
+def print_predicted_price_vs_real_price(exp_results):
+    for k_name, k in exp_results.items():
+        for result in k["results"].values():
+            for model_name, model_results in result.items():
+                for model_result in model_results.values():
+                    y_test = model_result["y_test"]
+                    predictions = model_result["predictions"]
+                    plt.scatter(predictions, y_test)
+                    plt.xlabel("Predicciones")
+                    plt.ylabel("Precios reales")
+                    plt.title(f"Comparación de precios reales y predicciones {model_name}")
+                    plt.show()
 
 
 def get_best_experiment(exp_results):
     """
-    Recibe el resultado de los experimentos, y seleccionad el de menor MAE
+    Recibe el resultado de los experimentos, y seleccionad el de menor MAE %
     """
     experiments = []
     for exp_result in exp_results.values():
@@ -388,39 +414,18 @@ def get_best_experiment(exp_results):
                 for model_info in model.values():
                     experiment = {
                         "model_name": model_name,
-                        "model_info": model_info
+                        "model_info": model_info,
+                        "mae_percentage": np.mean(get_error_percentage(model_info["y_test"], model_info["predictions"]))
                     }
                     experiments.append(experiment)
 
-    sorted_experiments = sorted(experiments, key=lambda x: x["model_info"]["mae"])
+    sorted_experiments = sorted(experiments, key=lambda x: x["mae_percentage"])
     best_experiment = sorted_experiments[0]
     print("numero de experimentos: ", len(experiments))
-    print(best_experiment["model_info"]["mae"])
+    print(best_experiment["mae_percentage"])
     print(best_experiment["model_name"])
 
-    return best_experiment
-
-
-def boxplot_mae_per_k(exp_results):
-    mae_per_k = []
-    for k_data in exp_results.values():
-        temp_array = []
-
-        for result in k_data["results"].values():
-            for model_name, model_results in result.items():
-
-                for mode_result in model_results.values():
-                    temp_array.append(mode_result["mae"])
-
-        mae_per_k.append(np.mean(temp_array))
-
-    plt.boxplot(mae_per_k)
-
-    plt.title('Media de mae por k-fold')
-    plt.xlabel('Mae')
-    plt.ylabel('Valores')
-
-    plt.show()
+    return sorted_experiments
 
 
 def get_mae_per_model(exp_results):
@@ -437,82 +442,104 @@ def get_mae_per_model(exp_results):
                     if experiment_id not in mae_per_model[model_name]:
                         mae_per_model[model_name][experiment_id] = []
 
+                    mae_percentage = np.mean(get_error_percentage(model_result["y_test"], model_result["predictions"]))
+
+                    model_result["mae_percentage"] = mae_percentage
                     mae_per_model[model_name][experiment_id].append(model_result)
 
     final_mae_per_model = {}
     for model_name, experiments in mae_per_model.items():
-        if model_name not in mae_per_model[model_name]:
+        if model_name not in final_mae_per_model:
             final_mae_per_model[model_name] = {}
 
         for experiment_name, experiment in experiments.items():
-            mae_experiment = []
             for iteration in experiment:
-
                 if experiment_name not in final_mae_per_model[model_name]:
                     final_mae_per_model[model_name][experiment_name] = []
-
-                mae_experiment.append(iteration["mae"])
-
-            final_mae_per_model[model_name][experiment_name].append(mae_experiment)
+                final_mae_per_model[model_name][experiment_name].append(iteration["mae_percentage"])
 
     return final_mae_per_model
 
 
 def boxplot_mae_per_model(mae_per_model):
-    for model_name, model_data in mae_per_model.items():
-        all_values = []
+    fig, axs = plt.subplots(nrows=6, ncols=2, figsize=(20, 20))
 
-        # Agregar cada valor individual a la lista
-        for i, value in enumerate(model_data.values()):
-            all_values.extend(value)
+    axs = axs.flatten()
+    for i, (model_name, model_data) in enumerate(mae_per_model.items()):
+        values = []
 
-        data = all_values
+        for value in model_data.values():
+            values.extend([value])
 
-        # Creating axes instance
+        axs[i].boxplot(values)
+        axs[i].set_title(model_name)
+        axs[i].set_ylim(20, 50)
 
-        plt.boxplot(data)
+    plt.tight_layout()
 
-        plt.show()
-
-        # # Crear la figura y los subplots
-        # fig, axs = plt.subplots(nrows=3, ncols=4, figsize=(12, 9))
-        # axs = axs.flatten()
-        #
-        # # Crear los boxplots
-        # for i, (test, values) in enumerate(model_data.items()):
-        #     axs[i].boxplot(values)
-        #     axs[i].set_title(test)
-        #
-        # # Ajustar el espaciado entre los subplots
-        # plt.tight_layout()
-        #
-        # # Mostrar el gráfico
-        # plt.show()
+    plt.show()
 
 
 def get_mae_per_experiment(exp_results):
-    results_per_model_per_experiment = {}
+    mae_per_experiment = {}
     for k_name, k in exp_results.items():
         for result in k["results"].values():
             for model_name, model_results in result.items():
-                if model_name not in results_per_model_per_experiment:
-                    results_per_model_per_experiment[model_name] = {}
+                for model_result in model_results.values():
+                    experiment_id = model_result["model"]["id"]
+                    if experiment_id not in mae_per_experiment:
+                        mae_per_experiment[experiment_id] = {}
 
-                for mode_result in model_results.values():
-                    if k_name not in results_per_model_per_experiment[model_name]:
-                        results_per_model_per_experiment[model_name][k_name] = []
+                    if model_name not in mae_per_experiment[experiment_id]:
+                        mae_per_experiment[experiment_id][model_name] = []
 
-                    results_per_model_per_experiment[model_name][k_name].append(mode_result)
+                    mae_percentage = np.mean(get_error_percentage(model_result["y_test"], model_result["predictions"]))
 
-    # results_per_model_per_experiment_with_mae = {}
-    # for result in results_per_model_per_experiment.values():
-    #     for k_name, k in result.items():
-    #         for iteration in k:
-    #             if k_name not in results_per_model_per_experiment[model_name]:
-    #                 results_per_model_per_experiment_with_mae[model_name][k_name] = []
-    #             print(iteration["mae"])
+                    model_result["mae_percentage"] = mae_percentage
+                    mae_per_experiment[experiment_id][model_name].append(model_result)
 
-    return results_per_model_per_experiment
+    for experiment_name, experiment in mae_per_experiment.items():
+        for model_name, model in experiment.items():
+            mae_per_experiment[experiment_name][model_name] = sorted(model, key=lambda x: x["mae_percentage"])
+
+    final_mae_per_experiment = {}
+    for experiment_id, experiments in mae_per_experiment.items():
+        for model_name, experiment in experiments.items():
+            for iteration in experiment:
+                if experiment_id not in final_mae_per_experiment:
+                    final_mae_per_experiment[experiment_id] = {}
+
+                if model_name not in final_mae_per_experiment[experiment_id]:
+                    final_mae_per_experiment[experiment_id][model_name] = []
+
+                final_mae_per_experiment[experiment_id][model_name].append(iteration["mae_percentage"])
+
+    return final_mae_per_experiment
+
+
+def boxplot_mae_per_experiment(mae_per_experiment):
+    fig, axs = plt.subplots(nrows=6, ncols=2, figsize=(20, 20))
+
+    axs = axs.flatten()
+    for i, (model_name, model_data) in enumerate(mae_per_experiment.items()):
+        values = []
+
+        for value in model_data.values():
+            values.extend([value])
+
+        axs[i].boxplot(values)
+        axs[i].set_title(model_name)
+        axs[i].set_ylim(20, 50)
+
+        valores_x = ['LogisticRegression', 'LinearRegression', 'DecisionTreeRegressor', 'RandomForestRegressor',
+                     'MLPRegressor', 'GradientBoostingRegressor', 'XGBRegressor',
+                     'DecisionTreeClassifier', 'RandomForestClassifier', 'MLPClassifier', 'SVM', 'KNN']
+
+        axs[i].set_xticklabels(valores_x, rotation=15, ha='right')
+
+    plt.tight_layout()
+
+    plt.show()
 
 
 def histogram_abs_price_error(exp_results, min_range, max_range):
@@ -548,8 +575,7 @@ def histogram_abs_percentage_error(exp_results, min_range, max_range):
                         if price < min_range or price > max_range: continue
 
                         prediction = model_info["predictions"][i]
-                        test = get_error_percentage(price, prediction)
-                        errors.append(test)
+                        errors.append(get_error_percentage(price, prediction))
 
     plt.hist(errors, rwidth=0.85)
 
@@ -581,3 +607,105 @@ def get_error_percentage(y_test, y_pred):
 
 def discretize_price(price):
     return np.floor_divide(price, 10) * 10
+
+
+def print_geolocation_plot(df):
+    BBox = (df.longitude.min(), df.longitude.max(),
+            df.latitude.min(), df.latitude.max())
+
+    ruh_m = plt.imread('D:/Dropbox/UOC/en curso/tfg/houses-tesis/ml/mapa.png')
+    fig, ax = plt.subplots(figsize=(8, 7))
+    ax.scatter(df.longitude, df.latitude, zorder=1, alpha=0.2, c='b', s=10)
+    ax.set_title('Plotting Spatial Data on Spain Map')
+    ax.set_xlim(BBox[0], BBox[1])
+    ax.set_ylim(BBox[2], BBox[3])
+    ax.imshow(ruh_m, zorder=0, extent=BBox, aspect='equal')
+    plt.show()
+
+
+def print_dataset_histograms(df):
+    columns = ["price", "builtArea", "usableArea"]
+    data = df[columns]
+
+    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+
+    for i, columna in enumerate(columns):
+        axs[i].hist(data[columna], bins=50)
+        axs[i].set_xlabel("Valor")
+        axs[i].set_ylabel("Frecuencia")
+        axs[i].set_title(f"Histograma de {columna}")
+
+    plt.tight_layout()
+    plt.show()
+
+    elevator = df["elevator"].value_counts(normalize=True)
+    houseHeating = df["houseHeating"].value_counts(normalize=True)
+    terrace = df["terrace"].value_counts(normalize=True)
+    swimmingPool = df["swimmingPool"].value_counts(normalize=True)
+
+    columns = ["bedrooms", "bathrooms", "floor"]
+    data = df[columns]
+
+    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+
+    for i, columna in enumerate(columns):
+        axs[i].hist(data[columna], bins=50)
+        axs[i].set_xlabel("Valor")
+        axs[i].set_ylabel("Frecuencia")
+        axs[i].set_title(f"Histograma de {columna}")
+
+    plt.tight_layout()
+    plt.show()
+
+
+def get_best_and_worse_houses(exp_results):
+    df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
+
+    results = [[] for _ in range(len(df))]
+
+    for k_name, k in exp_results.items():
+        for result in k["results"].values():
+            for model_name, model_results in result.items():
+                for model_result in model_results.values():
+                    percentage_error = get_error_percentage(model_result["y_test"], model_result["predictions"])
+                    ranking = percentage_error.rank(method='min')
+
+                    for id, rank in ranking.items():
+                        results[id].append(rank)
+
+    final_results = [{} for _ in range(len(df))]
+
+    for index, result in enumerate(results):
+        final_results[index] = {
+            "id": index,
+            "mean_ranking": np.mean(result)}
+
+    sorted_by_ranking = sorted(final_results, key=lambda x: x["mean_ranking"])
+
+    number_houses = 10
+
+    bests = sorted_by_ranking[:number_houses]
+
+    test1 = []
+    for best in bests:
+        test1.append(df.iloc[best["id"]])
+
+    worsts = sorted_by_ranking[-number_houses:]
+    test2 = []
+    for worst in worsts:
+        test2.append(df.iloc[worst["id"]])
+
+    print(test2)
+
+
+def print_real_price_vs_predicted_price(experiment):
+
+    print(experiment["mae_percentage"])
+
+    model_name = experiment["model_name"]
+    experiment_name = experiment["model_info"]["model"]["id"]
+    plt.scatter(experiment["model_info"]["predictions"], experiment["model_info"]["y_test"])
+    plt.xlabel("Precio estimado")
+    plt.ylabel("Precios reales")
+    plt.title(f"Comparación de precios reales y estimado {model_name} {experiment_name}")
+    plt.show()

@@ -17,3 +17,5 @@ run_test(df)
 end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"El tiempo total de ejecución fue de {elapsed_time:.2f} segundos")
+
+
