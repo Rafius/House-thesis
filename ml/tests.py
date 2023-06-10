@@ -64,7 +64,7 @@ def run_test(df):
     y = df["price"]
 
     exp_results = {}
-    if os.path.exists("results0.pkl"):
+    if os.path.exists("results.pkl"):
         with open("results.pkl", "rb") as infile:
             exp_results = pickle.load(infile)
 
