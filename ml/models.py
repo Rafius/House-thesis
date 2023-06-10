@@ -11,63 +11,6 @@ models = [
         "model": LogisticRegression,
         "model_args": [
             {},
-            {
-                "max_iter": 1000,
-                "solver": "liblinear"
-            },
-            {
-                "max_iter": 2000,
-                "solver": "liblinear"
-            },
-            {
-                "max_iter": 5000,
-                "solver": "liblinear"
-            },
-            {
-                "max_iter": 1000,
-                "n_jobs": -1,
-                "solver": "newton-cg"
-            },
-            {
-                "max_iter": 2000,
-                "n_jobs": -1,
-                "solver": "newton-cg"
-            },
-            {
-                "max_iter": 5000,
-                "n_jobs": -1,
-                "solver": "newton-cg"
-            },
-            {
-                "max_iter": 1000,
-                "n_jobs": -1,
-                "solver": "lbfgs"
-            },
-            {
-                "max_iter": 2000,
-                "n_jobs": -1,
-                "solver": "lbfgs"
-            },
-            {
-                "max_iter": 5000,
-                "n_jobs": -1,
-                "solver": "lbfgs"
-            },
-            {
-                "max_iter": 1000,
-                "n_jobs": -1,
-                "solver": "sag"
-            },
-            {
-                "max_iter": 2000,
-                "n_jobs": -1,
-                "solver": "sag"
-            },
-            {
-                "max_iter": 5000,
-                "n_jobs": -1,
-                "solver": "sag"
-            },
         ],
         "model_name": 'LogisticRegression'
     },

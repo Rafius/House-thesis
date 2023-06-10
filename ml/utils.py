@@ -14,6 +14,7 @@ from numpy import std, sqrt
 import os.path
 from openpyxl import load_workbook
 import scipy.stats as stats
+import re
 
 
 def load_dataset(enable_prints):
@@ -22,11 +23,12 @@ def load_dataset(enable_prints):
     """
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
 
-    # if "latitude" not in df:
-    # df = get_coordinates(df)
+    # df = get_postal_code(df)
+    if "latitude" not in df:
+        df = get_coordinates(df)
 
     features = ['price', 'city', 'builtArea', 'usableArea', 'bedrooms', 'bathrooms', 'floor', 'elevator',
-                'houseHeating', 'terrace', 'swimmingPool', "latitude", "longitude"]
+                'houseHeating', 'terrace', 'swimmingPool', "lat", "lon"]
 
     df = df.loc[:, features]
 
@@ -40,7 +42,7 @@ def load_dataset(enable_prints):
         print(df.columns)
         print(df.isnull().sum())
 
-    df = df.dropna(subset=['latitude'])
+    df = df.dropna(subset=['lat'])
     df = df.dropna(subset=['price'])
 
     df = transform_dataset(df, enable_prints)
@@ -56,7 +58,7 @@ def transform_dataset(df, enable_prints):
     """
 
     df['price'] = pd.to_numeric(df['price'], errors='coerce')
-    df = df.drop(df[df['price'] > 5000].index)
+    # df = df.drop(df[df['price'] > 5000].index)
 
     df['builtArea'] = pd.to_numeric(df['builtArea'], errors='coerce')
 
@@ -89,6 +91,41 @@ def transform_dataset(df, enable_prints):
 
     return df
 
+
+def get_postal_code(df):
+    postal_codes = pd.read_excel('codigos-postales.xlsx')
+
+    provincias_deseadas = ['Barcelona', 'Málaga', 'Madrid']
+    postal_codes_filtered = postal_codes[postal_codes['provincia'].isin(provincias_deseadas)]
+
+    for index, house in df.iterrows():
+        location = house["location"]
+        result = re.search(r'\((.*?)\)', location)
+
+        if result:
+            location = result.group(1)
+
+            if "." in location:
+                location = re.split(r'\.', location)[-1].strip()
+
+            if "Capital" in location:
+                location = re.sub(r'\bCapital\b', '', location).strip()
+
+        postal_code_row = postal_codes_filtered[postal_codes_filtered["poblacion"] == location]
+
+        if not postal_code_row.empty:
+            postal_code = postal_code_row.iloc[0]["codigopostalid"]
+            latitude = postal_code_row.iloc[0]["lat"] / 1000000000
+            longitude = postal_code_row.iloc[0]["lon"] / 1000000000
+            df.at[index, 'postal_code'] = postal_code
+            df.at[index, 'lat'] = latitude
+            df.at[index, 'lon'] = longitude
+
+        # else:
+        #     print("not found", location)
+
+    df.to_csv('houses_v2.csv', index=False)
+    return df
 
 def replace_null_with_median(X_train, X_test=None):
     """
@@ -124,8 +161,8 @@ def get_knn(X_train, X_test, k):
     """
     Obtiene los k-vecinos
     """
-    latitudes = X_train['latitude'].apply(radians)
-    longitudes = X_train['longitude'].apply(radians)
+    latitudes = X_train['lat'].apply(radians)
+    longitudes = X_train['lon'].apply(radians)
 
     nn = NearestNeighbors(n_neighbors=k, algorithm='ball_tree')
 
@@ -178,7 +215,7 @@ def get_distance_to_center(dataset):
     dataset['distance_to_center'] = None
 
     for i, row in dataset.iterrows():
-        lat, lon = row['latitude'], row['longitude']
+        lat, lon = row['lat'], row['lon']
         for j, coordinates in enumerate(cities.values()):
             if row['city'] == j:
                 distance = haversine(lat, lon, coordinates['lat'], coordinates['lon'])
@@ -357,7 +394,7 @@ histogram_ranges = [
 
 def show_results(exp_results):
     """
-    Recibe el resultado de los experimentos, y pinta los datos en distintos graficos
+    Recibe el resultado de los experimentos, y pinta los datos en distintos gráficos
     """
     #
     # best_experiments = get_best_experiment(exp_results)
@@ -368,6 +405,11 @@ def show_results(exp_results):
     # print_mae_percentage_vs_real_price(exp_results)
     # print_predicted_price_vs_real_price(exp_results)
     get_best_and_worse_houses(exp_results)
+
+    # print_real_price_vs_predicted_price(best_experiments[0])
+    # print_real_price_vs_predicted_price(best_experiments[1])
+    # print_real_price_vs_predicted_price(best_experiments[2])
+
     # for ranges in histogram_ranges:
     #     min_range = ranges["min_range"]
     #     max_range = ranges["max_range"]
@@ -610,12 +652,12 @@ def discretize_price(price):
 
 
 def print_geolocation_plot(df):
-    BBox = (df.longitude.min(), df.longitude.max(),
-            df.latitude.min(), df.latitude.max())
+    BBox = (df.lon.min(), df.lon.max(),
+            df.lat.min(), df.lat.max())
 
     ruh_m = plt.imread('D:/Dropbox/UOC/en curso/tfg/houses-tesis/ml/mapa.png')
     fig, ax = plt.subplots(figsize=(8, 7))
-    ax.scatter(df.longitude, df.latitude, zorder=1, alpha=0.2, c='b', s=10)
+    ax.scatter(df.lon, df.lat, zorder=1, alpha=0.2, c='b', s=10)
     ax.set_title('Plotting Spatial Data on Spain Map')
     ax.set_xlim(BBox[0], BBox[1])
     ax.set_ylim(BBox[2], BBox[3])
@@ -638,10 +680,7 @@ def print_dataset_histograms(df):
     plt.tight_layout()
     plt.show()
 
-    elevator = df["elevator"].value_counts(normalize=True)
-    houseHeating = df["houseHeating"].value_counts(normalize=True)
-    terrace = df["terrace"].value_counts(normalize=True)
-    swimmingPool = df["swimmingPool"].value_counts(normalize=True)
+
 
     columns = ["bedrooms", "bathrooms", "floor"]
     data = df[columns]
@@ -657,6 +696,10 @@ def print_dataset_histograms(df):
     plt.tight_layout()
     plt.show()
 
+    elevator = df["elevator"].value_counts(normalize=True)
+    houseHeating = df["houseHeating"].value_counts(normalize=True)
+    terrace = df["terrace"].value_counts(normalize=True)
+    swimmingPool = df["swimmingPool"].value_counts(normalize=True)
 
 def get_best_and_worse_houses(exp_results):
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
@@ -686,26 +729,30 @@ def get_best_and_worse_houses(exp_results):
 
     bests = sorted_by_ranking[:number_houses]
 
-    test1 = []
     for best in bests:
-        test1.append(df.iloc[best["id"]])
+        print(df.iloc[best["id"]])
 
     worsts = sorted_by_ranking[-number_houses:]
-    test2 = []
     for worst in worsts:
-        test2.append(df.iloc[worst["id"]])
+        print(df.iloc[worst["id"]])
 
-    print(test2)
 
 
 def print_real_price_vs_predicted_price(experiment):
-
     print(experiment["mae_percentage"])
 
     model_name = experiment["model_name"]
     experiment_name = experiment["model_info"]["model"]["id"]
     plt.scatter(experiment["model_info"]["predictions"], experiment["model_info"]["y_test"])
+
+    x_line = np.linspace(0, 20000, 100)
+    y_line = np.linspace(0, 20000, 100)
+
+    plt.plot(x_line, y_line, color='red', linestyle='--')
     plt.xlabel("Precio estimado")
     plt.ylabel("Precios reales")
-    plt.title(f"Comparación de precios reales y estimado {model_name} {experiment_name}")
+    plt.title(f"Comparación de precios reales y estimados {model_name} {experiment_name}")
+    plt.xlim(0, 20000)
+    plt.ylim(0, 20000)
     plt.show()
+
