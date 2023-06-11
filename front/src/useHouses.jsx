@@ -12,7 +12,6 @@ const useCharacters = () => {
       ...house,
       ...shouldBuyThisHouse(house)
     }))
-    // .filter((house) => house.isHouseInteresting)
     .sort((b, a) => a.cashOnCashReturn - b.cashOnCashReturn);
 
   houses = houses.slice(

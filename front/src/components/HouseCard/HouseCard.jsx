@@ -30,7 +30,9 @@ const HouseCard = ({
       />
       <div className={styles.HouseCard__body}>
         <h3>
-          <span className={styles.HouseCard__body__price}>{price}€</span>
+          <span className={styles.HouseCard__body__price}>
+            {(price * 1000).toLocaleString("es-ES")} €
+          </span>
           <span className={styles.HouseCard__body__title}>
             <strong>{titleFirstWord}</strong> {restTitle.join(" ")}
           </span>

@@ -14,8 +14,8 @@ const calculateMortgageCost = (housePrice) => {
 };
 
 export const shouldBuyThisHouse = (house) => {
-  let housePrice = house.price.replace(/\./g, "");
-  housePrice = parseInt(housePrice);
+  let housePrice = house.price;
+  housePrice = parseInt(housePrice) * 1000;
   const yearlyRentPrice = parseInt(house.rentPrice) * 12;
   const deposit = housePrice / 5;
   const notary = 800;
