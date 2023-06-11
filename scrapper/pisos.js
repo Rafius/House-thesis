@@ -153,10 +153,8 @@ const asyncLoop = async () => {
   const cities = ["madrid", "malaga", "barcelona"];
 
   for (let x = 0; x < cities.length; x++) {
-    // await scrapperLinks(1, "alquiler-residencial", cities[x]);
+    await scrapperLinks(1, "venta", cities[x]);
   }
 };
 
 asyncLoop();
-
-scrapperLinks(1, "venta", "malaga");

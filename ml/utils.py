@@ -1,3 +1,5 @@
+import pickle
+
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -397,18 +399,18 @@ def show_results(exp_results):
     Recibe el resultado de los experimentos, y pinta los datos en distintos gráficos
     """
     #
-    # best_experiments = get_best_experiment(exp_results)
-    # mae_per_model = get_mae_per_model(exp_results)
-    # boxplot_mae_per_model(mae_per_model)
-    # mae_per_experiment = get_mae_per_experiment(exp_results)
-    # boxplot_mae_per_experiment(mae_per_experiment)
+    best_experiments = get_best_experiment(exp_results)
+    mae_per_model = get_mae_per_model(exp_results)
+    boxplot_mae_per_model(mae_per_model)
+    mae_per_experiment = get_mae_per_experiment(exp_results)
+    boxplot_mae_per_experiment(mae_per_experiment)
     # print_mae_percentage_vs_real_price(exp_results)
     # print_predicted_price_vs_real_price(exp_results)
-    get_best_and_worse_houses(exp_results)
+    # get_best_and_worse_houses(exp_results)
 
-    # print_real_price_vs_predicted_price(best_experiments[0])
-    # print_real_price_vs_predicted_price(best_experiments[1])
-    # print_real_price_vs_predicted_price(best_experiments[2])
+    print_real_price_vs_predicted_price(best_experiments[0])
+    print_real_price_vs_predicted_price(best_experiments[1])
+    print_real_price_vs_predicted_price(best_experiments[2])
 
     # for ranges in histogram_ranges:
     #     min_range = ranges["min_range"]
@@ -595,8 +597,7 @@ def histogram_abs_price_error(exp_results, min_range, max_range):
                         if price < min_range or price > max_range: continue
 
                         prediction = model_info["predictions"][i]
-                        test = abs(prediction - price)
-                        errors.append(test)
+                        errors.append(abs(prediction - price))
 
     plt.hist(errors, rwidth=0.85)
 
@@ -704,38 +705,68 @@ def print_dataset_histograms(df):
 def get_best_and_worse_houses(exp_results):
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
 
-    results = [[] for _ in range(len(df))]
-
-    for k_name, k in exp_results.items():
-        for result in k["results"].values():
-            for model_name, model_results in result.items():
-                for model_result in model_results.values():
-                    percentage_error = get_error_percentage(model_result["y_test"], model_result["predictions"])
-                    ranking = percentage_error.rank(method='min')
-
-                    for id, rank in ranking.items():
-                        results[id].append(rank)
-
     final_results = [{} for _ in range(len(df))]
 
-    for index, result in enumerate(results):
-        final_results[index] = {
-            "id": index,
-            "mean_ranking": np.mean(result)}
+    if os.path.exists("final_results_v2.pkl"):
+        with open("final_results_v2.pkl", "rb") as infile:
+            final_results = pickle.load(infile)
+
+    if not final_results[0]:
+        results = [[] for _ in range(len(df))]
+
+        for k_name, k in exp_results.items():
+            for result in k["results"].values():
+                for model_name, model_results in result.items():
+                    for model_result in model_results.values():
+                        percentage_error = get_error_percentage(model_result["y_test"], model_result["predictions"])
+
+                        # error = abs(model_result["y_test"] - model_result["predictions"])
+                        # ranking = error.rank(method='min')
+                        ranking = percentage_error.rank(method='min')
+
+                        for id, rank in ranking.items():
+                            # results[id].append({"rank": rank, "predictions": model_result["predictions"]})
+                            results[id].append({"rank": rank, "error": percentage_error[id]})
+
+        for index, result_row in enumerate(results):
+            if not result_row: continue
+            errors = []
+            ranks = []
+            for result in result_row:
+                errors.append(result["error"])
+                ranks.append(result["rank"])
+
+            final_results[index] = {
+                "id": index,
+                "mean_ranking": np.mean(ranks),
+                "lowest_error": np.min(errors),
+                "mean_error": np.mean(errors),
+                "highest_error": np.max(errors)
+            }
+
+        with open("final_results_v2.pkl", "wb") as outfile:
+            pickle.dump(final_results, outfile)
+
+    # Filtrar y eliminar los diccionarios con valores vacíos para "mean_ranking"
+    final_results = [diccionario for diccionario in final_results if
+                     "mean_ranking" in diccionario and diccionario["mean_ranking"]]
+
 
     sorted_by_ranking = sorted(final_results, key=lambda x: x["mean_ranking"])
 
     number_houses = 10
 
     bests = sorted_by_ranking[:number_houses]
-
-    for best in bests:
-        print(df.iloc[best["id"]])
+    #
+    # for best in bests:
+    #     test = df.iloc[best["id"]]
+    #     print(test)
 
     worsts = sorted_by_ranking[-number_houses:]
-    for worst in worsts:
-        print(df.iloc[worst["id"]])
-
+    for j, worst in enumerate(worsts):
+        test2 = df.iloc[worst["id"]]
+        print(j)
+        print(test2)
 
 
 def print_real_price_vs_predicted_price(experiment):

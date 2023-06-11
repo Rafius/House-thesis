@@ -64,8 +64,8 @@ def run_test(df):
     y = df["price"]
 
     exp_results = {}
-    if os.path.exists("results.pkl"):
-        with open("results.pkl", "rb") as infile:
+    if os.path.exists("results_v3.pkl"):
+        with open("results_v3.pkl", "rb") as infile:
             exp_results = pickle.load(infile)
 
     # print("Aplico k-fold")
@@ -127,7 +127,7 @@ def run_test(df):
                     exp_results[f"k_{i}"]["results"][experiment["id"]][model_name][index] = experiment_result
 
                     # Guardar resultados
-                    with open("results.pkl", "wb") as outfile:
+                    with open("results_v3.pkl", "wb") as outfile:
                         pickle.dump(exp_results, outfile)
 
     show_results(exp_results)
