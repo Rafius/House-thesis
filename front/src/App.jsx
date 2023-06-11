@@ -17,11 +17,7 @@ const App = () => {
       />
       <div className={styles.HousesContainer}>
         {houses.map((house) => (
-          <HouseCard
-            {...house}
-            key={house.link}
-            {...shouldBuyThisHouse(house)}
-          />
+          <HouseCard {...house} key={house.link} />
         ))}
       </div>
     </div>

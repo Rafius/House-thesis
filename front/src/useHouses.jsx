@@ -3,16 +3,17 @@ import housesJson from "./houses_to_buy.json";
 import { shouldBuyThisHouse } from "./utils";
 
 const pagesLength = 20;
-const pages = parseInt((housesJson.length / pagesLength).toFixed());
+const housesFiltered = housesJson.filter((house) => house.link);
+const pages = parseInt((housesFiltered.length / pagesLength).toFixed());
 
 const useCharacters = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  let houses = housesJson
+  let houses = housesFiltered
     .map((house) => ({
       ...house,
       ...shouldBuyThisHouse(house)
     }))
-    .sort((b, a) => a.cashOnCashReturn - b.cashOnCashReturn);
+    .sort((b, a) => a.grossReturn - b.grossReturn);
 
   houses = houses.slice(
     (currentPage - 1) * pagesLength,

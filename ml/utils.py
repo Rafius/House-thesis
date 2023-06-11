@@ -7,6 +7,7 @@ from numpy import mean
 from shapely.geometry import Point
 import numpy as np
 import requests
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.neighbors import NearestNeighbors
 from math import radians
 import math
@@ -17,6 +18,9 @@ import os.path
 from openpyxl import load_workbook
 import scipy.stats as stats
 import re
+from sklearn import preprocessing
+
+le = preprocessing.LabelEncoder()
 
 
 def load_dataset(enable_prints):
@@ -26,8 +30,8 @@ def load_dataset(enable_prints):
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
 
     # df = get_postal_code(df)
-    if "latitude" not in df:
-        df = get_coordinates(df)
+    # if "latitude" not in df:
+    #     df = get_coordinates(df)
 
     features = ['price', 'city', 'builtArea', 'usableArea', 'bedrooms', 'bathrooms', 'floor', 'elevator',
                 'houseHeating', 'terrace', 'swimmingPool', "lat", "lon"]
@@ -80,6 +84,7 @@ def transform_dataset(df, enable_prints):
     # df["houseHeating"] = df['houseHeating'].map(boolean_dict)
     # df["terrace"] = df['terrace'].map(boolean_dict)
     # df["swimmingPool"] = df['swimmingPool'].map(boolean_dict)
+    # df["city"] = le.fit_transform(df["city"])
 
     floor_dict = {'Principal': 1, 'Entresuelo': 0.5, 'Bajo': 0, 'Sótano': -1, 'Subsótano': -0.5, 'Más de 20': 21}
 
@@ -126,8 +131,9 @@ def get_postal_code(df):
         # else:
         #     print("not found", location)
 
-    df.to_csv('houses_v2.csv', index=False)
+    df.to_csv('houses_to_buy.csv', index=False)
     return df
+
 
 def replace_null_with_median(X_train, X_test=None):
     """
@@ -342,35 +348,49 @@ def estimate_houses_to_buy_rent_prices():
     """
     Estima los precios de alquiler de los pisos en venta
     """
+    # Elegimos las caracteristicas
+
+    features = ["price", 'builtArea', "usableArea", "floor", 'bedrooms', 'bathrooms', 'elevator',
+                'houseHeating', 'terrace', 'swimmingPool', "lat", "lon"]
+
+    # Entrenamos el modelo
+    df = pd.read_csv('houses_v2.csv')
+    df = df.drop(df[df['price'] > 5000].index)
+    df = df.loc[:, features]
+
+    df = transform_dataset(df, False)
+    df, _ = replace_null_with_median(df)
+
+    X = df.loc[:, features]
+    X = X.drop("price", axis=1)
+    X, _ = normalize_data(X)
+    y = df["price"]
+
+    rf = RandomForestRegressor()
+    rf.fit(X, y)
 
     df_buy = pd.read_csv('houses_to_buy_v2.csv')
 
-    df_buy = df_buy.dropna(subset=['price'])
-
-    df_buy = df_buy.dropna(subset=['latitude'])
-
-    features = ["price", 'city', 'builtArea', "usableArea", "floor", 'bedrooms', 'bathrooms', 'elevator',
-                'houseHeating', 'terrace', 'swimmingPool', "latitude", "longitude"]
-
     df_buy_final = df_buy.loc[:, features]
 
-    df_buy_final = transform_dataset(df_buy_final)
+    # df_buy = get_postal_code(df_buy)
 
-    df_buy_final = get_distance_to_center(df_buy_final)
+    df_buy_final = transform_dataset(df_buy_final, False)
+
+    # df_buy.to_csv('houses_to_buy_v2.csv', index=False)
 
     df_buy_final, _ = replace_null_with_median(df_buy_final)
 
+    df_buy_final = df_buy_final.drop("price", axis=1)
     df_buy_final, _ = normalize_data(df_buy_final)
 
     # Usar el mejor modelo para predecir
+    predictions = rf.predict(df_buy_final)
 
-    # predictions = dt.predict(df_buy_final)
-    #
-    # nuevos_datos_con_predicciones = np.concatenate((df_buy, predictions.reshape(-1, 1)), axis=1)
-    # columnas = list(df_buy.columns) + ["rentPrice"]
-    # df_buy = pd.DataFrame(nuevos_datos_con_predicciones, columns=columnas)
-    #
-    # df_buy.to_json('houses_to_buy.json', orient='records')
+    df_buy["rentPrice"] = predictions
+
+    df_buy = df_buy.dropna(subset=['price'])
+    df_buy.to_json('houses_to_buy.json', orient='records')
 
 
 def clean_missing_values(X_train, X_test, options):
@@ -399,18 +419,18 @@ def show_results(exp_results):
     Recibe el resultado de los experimentos, y pinta los datos en distintos gráficos
     """
     #
-    best_experiments = get_best_experiment(exp_results)
-    mae_per_model = get_mae_per_model(exp_results)
-    boxplot_mae_per_model(mae_per_model)
-    mae_per_experiment = get_mae_per_experiment(exp_results)
-    boxplot_mae_per_experiment(mae_per_experiment)
+    # best_experiments = get_best_experiment(exp_results)
+    # mae_per_model = get_mae_per_model(exp_results)
+    # boxplot_mae_per_model(mae_per_model)
+    # mae_per_experiment = get_mae_per_experiment(exp_results)
+    # boxplot_mae_per_experiment(mae_per_experiment)
     # print_mae_percentage_vs_real_price(exp_results)
     # print_predicted_price_vs_real_price(exp_results)
-    # get_best_and_worse_houses(exp_results)
+    get_best_and_worse_houses(exp_results)
 
-    print_real_price_vs_predicted_price(best_experiments[0])
-    print_real_price_vs_predicted_price(best_experiments[1])
-    print_real_price_vs_predicted_price(best_experiments[2])
+    # print_real_price_vs_predicted_price(best_experiments[0])
+    # print_real_price_vs_predicted_price(best_experiments[1])
+    # print_real_price_vs_predicted_price(best_experiments[2])
 
     # for ranges in histogram_ranges:
     #     min_range = ranges["min_range"]
@@ -681,8 +701,6 @@ def print_dataset_histograms(df):
     plt.tight_layout()
     plt.show()
 
-
-
     columns = ["bedrooms", "bathrooms", "floor"]
     data = df[columns]
 
@@ -702,13 +720,14 @@ def print_dataset_histograms(df):
     terrace = df["terrace"].value_counts(normalize=True)
     swimmingPool = df["swimmingPool"].value_counts(normalize=True)
 
+
 def get_best_and_worse_houses(exp_results):
     df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
 
     final_results = [{} for _ in range(len(df))]
 
-    if os.path.exists("final_results_v2.pkl"):
-        with open("final_results_v2.pkl", "rb") as infile:
+    if os.path.exists("final_results.pkl"):
+        with open("final_results.pkl", "rb") as infile:
             final_results = pickle.load(infile)
 
     if not final_results[0]:
@@ -744,13 +763,12 @@ def get_best_and_worse_houses(exp_results):
                 "highest_error": np.max(errors)
             }
 
-        with open("final_results_v2.pkl", "wb") as outfile:
+        with open("final_results.pkl", "wb") as outfile:
             pickle.dump(final_results, outfile)
 
     # Filtrar y eliminar los diccionarios con valores vacíos para "mean_ranking"
     final_results = [diccionario for diccionario in final_results if
                      "mean_ranking" in diccionario and diccionario["mean_ranking"]]
-
 
     sorted_by_ranking = sorted(final_results, key=lambda x: x["mean_ranking"])
 
@@ -786,4 +804,27 @@ def print_real_price_vs_predicted_price(experiment):
     plt.xlim(0, 20000)
     plt.ylim(0, 20000)
     plt.show()
+
+
+def calculate_euclidean_distance():
+    df = pd.read_csv('houses_v2.csv', sep=',', encoding='utf-8')
+
+    for index,row in df.iterrows():
+        lat1 = row["latitude"]
+        lat2 = row["lat"]
+        lon1 = row["longitude"]
+        lon2 = row["lon"]
+
+        distance = haversine(lat1, lon1, lat2, lon2)
+        df.at[index, "distance"] = distance
+
+
+
+
+
+
+
+
+
+
 

@@ -7,12 +7,13 @@ const HouseCard = ({
   builtArea,
   price,
   rentPrice,
-  cashOnCashReturn,
   grossReturn,
   bedrooms = "1",
   bathrooms = "1",
   link
 }) => {
+  if (!link) return null;
+
   const [titleFirstWord, ...restTitle] = title.split(" ");
 
   const priceColor =
