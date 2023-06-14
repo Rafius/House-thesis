@@ -42,12 +42,7 @@ def run_experiment(experiment, X_train, y_train, X_test, model_instance):
     if "binning" in experiment and experiment["binning"]:
         y_train = discretize_price(y_train)
 
-
-    # print("Normalizamos los datos")
-
     X_train, X_test = normalize_data(X_train, X_test)
-    # pca(X_test)
-    # pca(X_train)
 
     model_instance.fit(X_train, y_train)
 
@@ -64,8 +59,8 @@ def run_test(df):
     y = df["price"]
 
     exp_results = {}
-    if os.path.exists("results_v2.pkl"):
-        with open("results_v2.pkl", "rb") as infile:
+    if os.path.exists("results_v3.pkl"):
+        with open("results_v3.pkl", "rb") as infile:
             exp_results = pickle.load(infile)
 
     # print("Aplico k-fold")
@@ -127,7 +122,7 @@ def run_test(df):
                     exp_results[f"k_{i}"]["results"][experiment["id"]][model_name][index] = experiment_result
 
                     # Guardar resultados
-                    with open("results_v2.pkl", "wb") as outfile:
+                    with open("results_v3.pkl", "wb") as outfile:
                         pickle.dump(exp_results, outfile)
 
     show_results(exp_results)

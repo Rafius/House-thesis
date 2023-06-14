@@ -8,11 +8,11 @@ enable_prints = False
 
 # print("Obtenemos el dataset con las variables que vamos a usar, ya transformadas")
 
-# df = load_dataset(enable_prints)
-#
-# run_test(df)
+df = load_dataset(enable_prints)
 
-estimate_houses_to_buy_rent_prices()
+run_test(df)
+
+# estimate_houses_to_buy_rent_prices()
 
 
 end_time = time.time()
