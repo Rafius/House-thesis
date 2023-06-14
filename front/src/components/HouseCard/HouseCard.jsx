@@ -9,11 +9,8 @@ const HouseCard = ({
   rentPrice,
   grossReturn,
   bedrooms = "1",
-  bathrooms = "1",
-  link
+  bathrooms = "1"
 }) => {
-  if (!link) return null;
-
   const [titleFirstWord, ...restTitle] = title.split(" ");
 
   const priceColor =
@@ -22,7 +19,7 @@ const HouseCard = ({
       : styles.HouseCard__body__rentPrice__orange;
 
   return (
-    <a className={styles.HouseCard} target="_blank" href={link}>
+    <div className={styles.HouseCard} target="_blank">
       <img
         className={styles.HouseCard__image}
         src={photo}
@@ -64,7 +61,7 @@ const HouseCard = ({
           <span className={priceColor}> {grossReturn.toFixed(2)}%</span>
         </p>
       </div>
-    </a>
+    </div>
   );
 };
 
