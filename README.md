@@ -1,6 +1,6 @@
 Universitat Oberta de Catalunya - Trabajo final de grado
 
-Inversión inmobiliaria usando inteligencia artificial
+Real Estate Investment Using Artificial Intelligence
 
 Rafael Puyol Fernández
 
