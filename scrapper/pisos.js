@@ -1,14 +1,17 @@
 const { chromium } = require("playwright-chromium");
 const { postHouses } = require("./api");
 
-// Web scrapper for pisos.com
+
+const minimo = 60000
+const maximo = 150000
+
 const scrapperLinks = async (startPage, search, city) => {
   const browser = await chromium.launch({
     headless: false,
-    defaultViewport: null
+    defaultViewport: null,
   });
   const page = await browser.newPage();
-  const url = `https://www.pisos.com/${search}/pisos-${city}/ultimasemana/${startPage}`;
+  const url = `https://www.pisos.com/${search}/pisos-${city}/${startPage}/desde-${minimo}/hasta-${maximo}/asc/`;
 
   await page.goto(url, { waitUntil: "networkidle" });
 
@@ -38,29 +41,29 @@ const scrapperLinks = async (startPage, search, city) => {
 
       await page.goto(link);
 
-      let [characteristics] = await page.$$(".characteristics");
+      let [characteristics] = await page.$$(".features");
       characteristics = await characteristics?.textContent();
+      console.log(characteristics)
       characteristics = characteristics
-        ?.replace(/\n\s*\n/g, "\n")
-        ?.replace(/^[ \t]+|[ \t]+$/gm, "");
+        ?.replace(/\s+/g, " ") 
 
       if (!characteristics) continue;
 
       // Expresiones regulares para extraer la información relevante
-      const regexBuiltArea = /Superficie construida\n:\s*(\d+)\s*m²/;
-      const regexUsableArea = /Superficie útil\n:\s*(\d+)\s*m²/;
-      const regexBedrooms = /Habitaciones\n:\s*(\d+)/;
-      const regexBathrooms = /Baños\n:\s*(\d+)/;
-      const regexFloor = /Planta\n:\s*(.+)/;
-      const regexAge = /Antigüedad\n:\s*(.+)/;
-      const regexCondition = /Conservación\n:\s*(.+)/;
-      const regexGarage = /Garaje\n:\s*(.+)/;
-      const regexOrientation = /Orientación\n:\s*(.+)/;
+      const regexBuiltArea = /Superficie construida:\s*(\d+)\s*m²/;
+      const regexUsableArea = /Superficie útil:\s*(\d+)\s*m²/;
+      const regexBedrooms = /Habitaciones:\s*(\d+)/;
+      const regexBathrooms = /Baños:\s*(\d+)/;
+      const regexFloor = /Planta:\s*(.+?)\s/;
+      const regexAge= /Antigüedad:\s*([^\n]+)/;
+      const regexCondition = /Conservación:\s*([^\n]+)/;
+      const regexCommunityExpenses = /Gastos de comunidad:\s*([^\n]+)\n/;
+      const regexGarage = /Garaje:\s*(\d+)/;
+      const regexOrientation = /Orientación:\s*(.+?)\sSoleado/;
       const regexEnergyCertificate = /Clasificación:\n:\s*(.+)/;
-      const regexSwimmingPool = /Piscina\s*:\s*([^\n]+)/;
-      const regexCommunityExpenses = /Gastos de comunidad\s*:\s*([^\n]+)/;
-      const regexAirConditioning = /Aire acondicionado\s*:\s*([^\n]+)/;
-      const regexHouseHeating = /Calefacción\s*:\s*([^\n]+)/;
+      const regexSwimmingPool = /Piscina:\s*(.+?)/;
+      const regexAirConditioning = /Aire acondicionado:\s*(.+?)\sCocina equipada:/;
+      const regexHouseHeating = /Calefacción:\s*(.+?)\sEquipamiento e instalaciones/;
       const regexHouseType = /Tipo de casa\s*:\s*([^\n]+)/;
 
       // Extract data using regular expressions
@@ -88,12 +91,12 @@ const scrapperLinks = async (startPage, search, city) => {
       const terrace = characteristics.indexOf("Terraza") > 0;
       const swimmingPool = characteristics.indexOf("Piscina") > 0;
 
-      let [info] = await page.$$(".maindata-info");
+      let [info] = await page.$$(".details__block");
       info = await info?.textContent();
       const title = info?.split("\n")?.[2].trim();
       const location = info?.split("\n")?.[3].trim();
 
-      let [price] = await page.$$(".priceBox-price");
+      let [price] = await page.$$(".price");
       price = await price?.textContent();
 
       const isRent = search === "alquiler-residencial";
@@ -103,7 +106,7 @@ const scrapperLinks = async (startPage, search, city) => {
       const result = isRent ? regexRent.exec(price) : regexBuy.exec(price);
       price = result?.[1];
 
-      let [photo] = await page.$$(".mainphoto-image-print");
+      let [photo] = await page.$$(".masonry__content");
 
       photo = await photo?.getAttribute("src");
 
@@ -132,7 +135,7 @@ const scrapperLinks = async (startPage, search, city) => {
         swimmingPool,
         swimmingPoolType,
         houseType,
-        photo
+        photo,
       ];
 
       const range = isRent ? "rent" : "buy";
@@ -141,7 +144,7 @@ const scrapperLinks = async (startPage, search, city) => {
       console.log(j, i, "/", pages);
     }
 
-    const url = `https://www.pisos.com/${search}/pisos-${city}/${i}`;
+    const url = `https://www.pisos.com/${search}/pisos-${city}/${i}/desde-${minimo}/hasta-${maximo}/asc/`;
 
     await page.goto(url);
   }
@@ -150,9 +153,9 @@ const scrapperLinks = async (startPage, search, city) => {
 };
 
 const asyncLoop = async () => {
-  const cities = ["madrid", "malaga", "barcelona"];
+  const cities = ["girona"];
 
-  for (let x = 2; x < cities.length; x++) {
+  for (let x = 0; x < cities.length; x++) {
     await scrapperLinks(1, "venta", cities[x]);
   }
 };
